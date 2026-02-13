@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# claude-solo — Launch Claude Code in Solo Dev Mode
+# Plans first, asks before implementing, single-agent workflow.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="$(cd "$SCRIPT_DIR/../config" && pwd)"
+
+if ! command -v claude &>/dev/null; then
+  echo "Error: Claude Code is not installed."
+  echo "Install it with: npm install -g @anthropic-ai/claude-code"
+  exit 1
+fi
+
+exec claude --verbose \
+  --append-system-prompt-file "$CONFIG_DIR/solo-system-prompt.md" \
+  "$@"
