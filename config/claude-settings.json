@@ -35,7 +35,9 @@
       "Bash(tsc *)",
       "Bash(eslint *)",
       "Bash(prettier *)",
-      "mcp__linear"
+      "mcp__linear",
+      "mcp__context7",
+      "mcp__brave-search"
     ],
     "deny": [
       "Bash(rm -rf *)",
