@@ -11,6 +11,8 @@
 #   7. Installs tmux config optimized for Claude Team mode
 #   8. Installs the iTerm2 "Claude Team" dynamic profile (Ctrl+Cmd+L)
 #   9. Symlinks claude-solo and claude-team to /usr/local/bin
+#  10. (reserved)
+#  11. Symlinks CLAUDE.md orchestrator to ~/Documents/GitHub/
 #
 # Usage:
 #   chmod +x setup.sh && ./setup.sh
@@ -221,6 +223,21 @@ sudo ln -sf "$SCRIPT_DIR/bin/claude-team" "$BIN_TARGET/claude-team"
 success "Commands installed:"
 echo "    claude-solo  → Solo Dev Mode"
 echo "    claude-team  → Team Lead Mode"
+
+# ─── Step 11: Deploy orchestrator CLAUDE.md ──────────────────────────────────
+
+info "Deploying orchestrator CLAUDE.md..."
+
+GITHUB_DIR="$HOME/Documents/GitHub"
+ORCHESTRATOR_SOURCE="$SCRIPT_DIR/CLAUDE.md"
+ORCHESTRATOR_TARGET="$GITHUB_DIR/CLAUDE.md"
+
+if [[ -f "$ORCHESTRATOR_SOURCE" ]]; then
+  ln -sf "$ORCHESTRATOR_SOURCE" "$ORCHESTRATOR_TARGET"
+  success "CLAUDE.md symlinked: $ORCHESTRATOR_TARGET → $ORCHESTRATOR_SOURCE"
+else
+  warn "CLAUDE.md not found at $ORCHESTRATOR_SOURCE — skipping symlink."
+fi
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
 
