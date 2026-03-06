@@ -164,6 +164,18 @@ else
   echo "  claude mcp add-json linear '{\"command\":\"npx\",\"args\":[\"-y\",\"mcp-remote\",\"https://mcp.linear.app/sse\"]}'"
 fi
 
+# ─── Step 6b: Context7 MCP server ─────────────────────────────────────────────
+
+info "Configuring Context7 MCP server..."
+if command -v claude &>/dev/null; then
+  claude mcp add-json context7 '{"command":"npx","args":["-y","@upstash/context7-mcp"]}' 2>/dev/null || true
+  success "Context7 MCP server configured."
+else
+  warn "Claude Code not installed — skipping Context7 MCP setup."
+  echo "  Run this after installing Claude Code:"
+  echo "  claude mcp add-json context7 '{\"command\":\"npx\",\"args\":[\"-y\",\"@upstash/context7-mcp\"]}'"
+fi
+
 # ─── Step 7: Custom /linear slash command ─────────────────────────────────────
 
 info "Installing /linear slash command..."
