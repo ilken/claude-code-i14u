@@ -163,6 +163,8 @@ export class DomainModule {}
 
 - Must not use Prisma service to access tables from other modules
 - Must use respective module services to request data from other modules
+- Must prefer `QueryBuilderSql` over hand-rolled SQL strings for `pgPool` queries — improve the builder where needed rather than bypassing it
+- Must wrap raw `pgPool.query()` calls in try/catch with `this.handlePgError(error)` (not `handlePrismaError`, which is for Prisma ORM errors only)
 
 ## Naming Conventions
 

@@ -7,6 +7,12 @@ Append new learnings at the top. Format:
 
 ---
 
+## 2026-03-10 General - Prettier Before PR
+
+Always run `yarn prettier --write` on changed files **before** committing and creating a PR. Add this to the validation step between lint/tsc and commit.
+
+---
+
 ## 2026-03-09 Backend - EQLS-7632 Unread Chat Counts
 
 ### Architecture Patterns
@@ -16,7 +22,7 @@ Append new learnings at the top. Format:
 - Models are registered in module via `PrismaUtils.createInjectablePrismaCustomModel`.
 
 ### CodeRabbit Review Patterns
-- CodeRabbit suggests wrapping `pgPool.query()` in try-catch with `handlePrismaError` — this is incorrect for raw pg queries. `handlePrismaError` is for Prisma ORM errors (P2002). Existing model methods don't wrap raw queries either. **Decline this suggestion.**
+- Raw `pgPool.query()` calls should be wrapped in try-catch with `this.handlePgError(error)` — **not** `handlePrismaError`, which is for Prisma ORM errors only. CodeRabbit's suggestion was right about the try-catch, wrong about which handler.
 - CodeRabbit correctly flags: constructor params should use named domain types from `.types.ts` instead of inline types. **Accept this pattern.**
 - Test file import paths must use project-root aliases (e.g., `chat-channel/chat-channel.service`) not relative `../` paths.
 
