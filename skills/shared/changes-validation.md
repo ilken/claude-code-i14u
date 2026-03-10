@@ -69,3 +69,22 @@ npm test -- {TEST_FILE_PATH}
 5. Repeat until clean
 
 Do not commit or hand off with known failures.
+
+---
+
+## Behavioral Diff Verification
+
+After validation passes, run a final check for **refactors and behavior-changing edits**:
+
+```bash
+git diff
+```
+
+Review the diff holistically and verify:
+- No unintended behavioral side effects (e.g., changed return values, removed error handling, altered control flow)
+- No accidental deletions of code that should have been kept
+- Changes are scoped to what was planned — nothing extra crept in
+
+**When to do this:** Refactors, logic changes, and any edit that alters runtime behavior. Skip for pure additions (new files, new tests) or cosmetic changes (formatting, comments).
+
+If you spot an unintended change, fix it and re-run validation before committing.

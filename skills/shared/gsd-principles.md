@@ -1,6 +1,6 @@
 # GSD Principles
 
-Eight principles for getting stuff done efficiently.
+Nine principles for getting stuff done efficiently.
 
 ---
 
@@ -44,6 +44,18 @@ saves more time than guessing wrong.
 Fix small issues you encounter along the way -- broken imports, typos,
 dead code in files you are already editing. But do not go on a
 refactoring spree.
+
+## 9. Pause on Complexity
+
+For non-trivial changes (multi-module, unfamiliar patterns, tricky state),
+pause and ask: "Is there a simpler way to do this?" before committing to
+the approach. This is a brief reflection, not a design review -- spend
+30 seconds, not 30 minutes.
+
+**Subordinate to principles 1, 2, and 6.** If the simpler way is not
+obvious within a moment, proceed with the current approach and ship it.
+This principle exists to catch accidental over-engineering, not to
+encourage it.
 
 ---
 
