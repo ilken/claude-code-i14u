@@ -16,6 +16,7 @@ This file auto-loads for all projects under `~/Documents/GitHub/`. It detects th
 6. **No gold-plating** — don't add features, refactor, or improve beyond what was asked
 7. **Ask when stuck** — if blocked for more than 5 minutes, ask the user
 8. **Leave it better** — fix small issues you encounter (broken imports, typos) but don't refactor
+9. **Pause on complexity** — for non-trivial changes, ask "is there a simpler way?" before committing (subordinate to 1, 2, 6)
 
 ---
 
@@ -100,6 +101,52 @@ Always let the user decide.
 
 ---
 
+## Subagent Strategy (Solo Mode)
+
+In solo mode, use Claude Code's native subagents to keep context clean and parallelize work. This does **not** replace team mode — it's lightweight delegation within a single-operator workflow.
+
+**When to use subagents:**
+- **Research** — exploring unfamiliar code, reading multiple files to answer a question, or checking how something is used across the codebase
+- **Parallel exploration** — investigating multiple potential approaches or files simultaneously
+- **Validation offloading** — running lint/typecheck/tests in background while continuing to code
+
+**When NOT to use subagents:**
+- Simple, directed searches (use Glob/Grep directly)
+- Tasks that require the full conversation context to execute correctly
+- Anything in team mode (use the named agent system instead)
+
+**Rules:**
+- Keep subagent prompts specific and self-contained — they don't share your context
+- Prefer foreground agents when you need results before proceeding; background agents for independent work
+- Don't duplicate work — if a subagent is researching something, don't also search for it yourself
+
+---
+
+## Autonomous Bug-Fix Mode
+
+For **obvious, small bug fixes**, skip the plan-and-approve step and go straight to implementation:
+
+**Criteria (all must be true):**
+- The fix touches **3 files or fewer**
+- The root cause is **clear and unambiguous** (e.g., null check, typo, wrong variable, missing import)
+- The fix is **low-risk** — no behavioral changes beyond correcting the bug
+
+**Flow:** Read → Fix → Validate → Summarize (skip Analyse + Plan approval)
+
+If any criterion is not met, follow the full RALF loop with user approval. When in doubt, ask.
+
+---
+
+## Branch Protection
+
+**NEVER commit directly to `main` or `master`.** Before committing:
+1. Check the current branch with `git branch --show-current`
+2. If on `main` or `master`, create a new branch first: `git checkout -b {user}/{ticket-id}-{slug}`
+3. If no ticket, use a descriptive branch name: `git checkout -b {user}/{short-description}`
+4. Only then proceed with the commit
+
+---
+
 ## Conventional Commits
 
 Format: `type(EQLS-XXXX): description`
@@ -148,6 +195,8 @@ After completing a task, if you learned something reusable:
 ---
 ```
 3. Keep entries concise and actionable
+
+**Immediate capture:** When the user corrects you mid-task or you discover something that contradicts your assumptions, update `learnings.md` right away. Do not wait for the Feedback phase — corrections are the highest-signal learnings and should not be lost.
 
 ---
 

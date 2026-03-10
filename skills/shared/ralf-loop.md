@@ -49,6 +49,22 @@ Write the code, then validate in a loop until clean:
 
 Do not move on with known failures. The loop ends when validation is green.
 
+### Mid-Implementation Re-Plan
+
+If any of these triggers occur during implementation, **stop coding and re-plan**:
+
+- **Wrong assumptions** — the code does not work as expected based on the original analysis
+- **Scope explosion** — the change requires significantly more files or modules than planned
+- **2 failed attempts** — two different approaches to the same sub-problem have failed
+
+When triggered:
+1. Stop implementation
+2. Summarize what you learned and what went wrong
+3. Present a revised plan to the user
+4. Wait for approval before resuming
+
+This is not a failure — it is the plan adapting to reality.
+
 ---
 
 ## F -- Feedback
@@ -62,6 +78,10 @@ Wrap up the task cleanly:
    type(EQLS-XXXX): description in imperative present-tense
    ```
 4. **Flag open questions** -- anything that needs follow-up or user decision
+
+### Immediate Learning Capture
+
+Do not wait for Feedback to capture learnings. If the user corrects you mid-task or you discover something important during implementation, update `learnings.md` immediately. The Feedback phase captures final learnings; corrections and surprises should be recorded as they happen.
 
 ---
 
