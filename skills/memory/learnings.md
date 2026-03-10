@@ -7,6 +7,14 @@ Append new learnings at the top. Format:
 
 ---
 
+## Maintenance
+
+- Keep this file under ~50 entries / 200 lines
+- When it grows beyond that, archive older entries to `skills/memory/archive/learnings-YYYY-MM.md`
+- Prune entries that have been codified into dedicated skill files (they're already captured)
+
+---
+
 ## 2026-03-10 General - Prettier Before PR
 
 Always run `yarn prettier --write` on changed files **before** committing and creating a PR. Add this to the validation step between lint/tsc and commit.

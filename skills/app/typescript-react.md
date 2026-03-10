@@ -111,6 +111,13 @@ export const useHandleChatError = () => {
 };
 ```
 
+### React Query Stability Rules
+
+- **MUST** keep `queryFn` stable by declaring it outside React components/hooks (no inline `queryFn` in `useQuery`/`useInfiniteQuery`)
+- **MUST** keep `getNextPageParam` stable by declaring it outside component/hook scope (use the passed `queryKey` to extract dynamic variables)
+- **MUST** build query keys from shared keys in `@src/hooks/invalidate-queries/useInvalidateQueries.ts` (`InvalidateQueryKeys`)
+- **MUST** add a new enum key in `InvalidateQueryKeys` before introducing a new custom query key string
+
 ### General Hook Rules
 
 - **MUST** wrap returned callbacks in `useCallback`

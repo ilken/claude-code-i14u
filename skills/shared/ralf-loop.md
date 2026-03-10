@@ -42,7 +42,7 @@ Write the code, then validate in a loop until clean:
 1. **Implement** the changes following the plan
 2. **Run validation commands** for the project:
    - Backend: `yarn code:full-lint && yarn test:local -- {file}`
-   - App: `yarn code:lint && yarn code:tsc`
+   - App: `yarn code:full-lint`
    - Web: `npm run lint && npm run typecheck && npm run build`
 3. **Fix any errors** -- lint, type, test failures
 4. **Repeat** steps 2-3 until all checks pass

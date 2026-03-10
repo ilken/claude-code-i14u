@@ -261,4 +261,4 @@ Add the new types and query to `src/schema.gql` in alphabetical order. If any ne
 - Resolver query with parallel fetch + profile hydration
 - `schema.gql` updated (types, query, enums)
 - New enums registered in `http-api-enums.types.ts`
-- `yarn code:lint && yarn code:tsc` passes
+- `yarn code:full-lint` passes

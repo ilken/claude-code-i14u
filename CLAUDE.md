@@ -8,44 +8,22 @@ This file auto-loads for all projects under `~/Documents/GitHub/`. It detects th
 
 ## GSD Principles
 
-1. **Bias to action** — start with the simplest approach, iterate from there
-2. **Ship over perfect** — working code beats elegant code that's late
-3. **Cut scope ruthlessly** — do the minimum that solves the problem
-4. **One thing at a time** — finish the current task before starting another
-5. **Fail fast** — if an approach isn't working after 2 attempts, try a different angle
-6. **No gold-plating** — don't add features, refactor, or improve beyond what was asked
-7. **Ask when stuck** — if blocked for more than 5 minutes, ask the user
-8. **Leave it better** — fix small issues you encounter (broken imports, typos) but don't refactor
-9. **Pause on complexity** — for non-trivial changes, ask "is there a simpler way?" before committing (subordinate to 1, 2, 6)
+Nine principles for shipping efficiently. Bias to action, cut scope, fail fast, no gold-plating.
+
+Full details: `claude-code-config/skills/shared/gsd-principles.md`
 
 ---
 
 ## RALF Loop
 
-Every task follows this loop:
+Every task follows: **Read → Analyse + Plan → Implement + Lint → Feedback**.
 
-### Read
-- Read the task description, ticket, or user request fully
-- Read referenced files and relevant code
-- Read applicable skills from `claude-code-config/skills/` (see Skills Loading below)
-- Read `claude-code-config/skills/memory/learnings.md` for past context
+- Gather context before coding. Load relevant skills and learnings.
+- Plan the approach and get user approval before implementing (unless autonomous bug-fix criteria are met).
+- Validate in a loop until clean. Do not proceed with known failures.
+- Summarize, capture learnings, and commit.
 
-### Analyse + Plan
-- Assess scope: small (< 3 files), medium (3-10 files), large (10+ files)
-- Create an implementation plan with files to create/modify
-- Present the plan and ask: "Are you happy with this approach, or would you like me to adjust anything?"
-- **Wait for approval before implementing**
-
-### Implement + Lint
-- Write code following the project's skill files and conventions
-- Run validation commands (see Validation below) after changes
-- Fix lint/type/build errors in a loop until clean
-- Do NOT proceed with known failures
-
-### Feedback
-- Summarize what was done
-- Note any learnings worth remembering (append to `claude-code-config/skills/memory/learnings.md`)
-- Create a conventional commit when the user confirms
+Full details: `claude-code-config/skills/shared/ralf-loop.md`
 
 ---
 
@@ -68,12 +46,13 @@ If the project type is unclear, ask the user.
 
 Skills live in `~/Documents/GitHub/claude-code-config/skills/`. Load them **lazily** — only read skills relevant to the current task, not all at once.
 
-### Always available
+### Shared skills (loaded on demand)
 - `shared/ralf-loop.md` — Full RALF methodology details
 - `shared/conventional-commits.md` — Commit message format
 - `shared/gsd-principles.md` — Working principles
 - `shared/changes-validation.md` — Validation commands per project
 - `shared/linear-workflow.md` — Linear ticket workflow
+- `shared/pr-workflow.md` — PR creation and description format
 - `shared/debug-mode.md` — Systematic debugging
 
 ### Per-project skills
@@ -81,7 +60,7 @@ Load from the detected project's skill directory when relevant to the task:
 
 **Backend**: `architecture.md`, `prisma.md`, `graphql.md`, `data-objects.md`, `testing.md`, `queue-processing.md`, `configuration.md`, `domain-knowledge.md`
 
-**App**: `architecture.md`, `typescript-react.md`, `styling.md`, `performance.md`, `testing.md`, `chat-navigation.md`, `ab-testing.md`, `guardrails.md`
+**App**: `architecture.md`, `typescript-react.md`, `styling.md`, `performance.md`, `testing.md`, `chat-navigation.md`, `ab-testing.md`
 
 **Web**: `architecture.md`, `graphql-react-query.md`, `styling.md`, `testing.md`, `security.md`
 
@@ -149,27 +128,19 @@ If any criterion is not met, follow the full RALF loop with user approval. When 
 
 ## Conventional Commits
 
-Format: `type(EQLS-XXXX): description`
+Format: `type(EQLS-XXXX): description` — imperative, present tense, lowercase, max 72 chars.
 
-Types: `feat`, `fix`, `chore`, `refactor`, `hotfix`
+Example: `feat(EQLS-1234): add dark mode toggle to settings`
 
-Rules:
-- Imperative, present tense, lowercase (e.g., "add user profile endpoint")
-- Ticket ID from Linear (e.g., `EQLS-1234`)
-- If no ticket, omit the scope: `fix: correct null check in auth middleware`
-- Max 72 characters for the subject line
+Full format, types, and rules: `claude-code-config/skills/shared/conventional-commits.md`
 
 ---
 
-## Validation Protocol
+## Validation
 
-Run these commands after making changes. Fix errors in a loop until clean.
+Run project validation commands after every change. Fix errors in a loop until clean.
 
-| Project | Commands |
-|---------|----------|
-| **Backend** | `yarn code:full-lint && yarn test:local -- {file}` |
-| **App** | `yarn code:lint && yarn code:tsc` |
-| **Web** | `npm run lint && npm run typecheck && npm run build` |
+Full commands per project: `claude-code-config/skills/shared/changes-validation.md`
 
 ---
 
