@@ -46,6 +46,7 @@ Write the code, then validate in a loop until clean:
    - Web: `npm run lint && npm run typecheck && npm run build`
 3. **Fix any errors** -- lint, type, test failures
 4. **Repeat** steps 2-3 until all checks pass
+5. **Commit** after each logical unit of work -- don't batch everything into one big commit at the end. Each step of the plan or cohesive file group should be its own commit.
 
 Do not move on with known failures. The loop ends when validation is green.
 
@@ -73,12 +74,8 @@ Wrap up the task cleanly:
 
 1. **Summarize** what was done -- files changed, decisions made, anything noteworthy
 2. **Note learnings** -- if you discovered something useful, append it to memory
-3. **Create a conventional commit** following the project's commit format:
-   ```
-   type(EQLS-XXXX): description in imperative present-tense
-   ```
-4. **Push and create a PR** -- push the branch and open a PR (see `shared/pr-workflow.md` for format)
-5. **Flag open questions** -- anything that needs follow-up or user decision
+3. **Push and create a PR** -- push the branch and open a PR (see `shared/pr-workflow.md` for format). Commits should already exist from the Implement phase.
+4. **Flag open questions** -- anything that needs follow-up or user decision
 
 ### Immediate Learning Capture
 
@@ -92,5 +89,5 @@ Do not wait for Feedback to capture learnings. If the user corrects you mid-task
 | ------- | ------------------------------- | ------------------------- |
 | Read    | Gather context                  | Understanding             |
 | Analyse | Plan the approach               | Ordered steps + approval  |
-| Lint    | Code + validate in a loop       | Green checks              |
-| Feedback| Summarize + commit + PR + learnings | Clean deliverable    |
+| Lint    | Code + validate + commit in a loop | Green checks           |
+| Feedback| Summarize + push + PR + learnings   | Clean deliverable     |
