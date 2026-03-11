@@ -10,7 +10,7 @@
 #   6. Installs the /linear custom slash command
 #   7. Installs tmux config optimized for Claude Team mode
 #   8. Installs the iTerm2 "Claude Team" dynamic profile (Ctrl+Cmd+L)
-#   9. Symlinks claude-solo and claude-team to /usr/local/bin
+#   9. Symlinks claude-solo, claude-team, and claude-lead to /usr/local/bin
 #  10. (reserved)
 #  11. Symlinks CLAUDE.md orchestrator to ~/Documents/GitHub/
 #
@@ -218,7 +218,7 @@ success "iTerm2 profile installed. Shortcut: Ctrl+Cmd+L"
 
 # ─── Step 10: Symlink bin scripts ────────────────────────────────────────────
 
-info "Installing claude-solo and claude-team commands..."
+info "Installing claude-solo, claude-team, and claude-lead commands..."
 
 BIN_TARGET="/usr/local/bin"
 
@@ -229,12 +229,15 @@ fi
 # Remove old symlinks if they exist
 [[ -L "$BIN_TARGET/claude-solo" ]] && sudo rm "$BIN_TARGET/claude-solo"
 [[ -L "$BIN_TARGET/claude-team" ]] && sudo rm "$BIN_TARGET/claude-team"
+[[ -L "$BIN_TARGET/claude-lead" ]] && sudo rm "$BIN_TARGET/claude-lead"
 
 sudo ln -sf "$SCRIPT_DIR/bin/claude-solo" "$BIN_TARGET/claude-solo"
 sudo ln -sf "$SCRIPT_DIR/bin/claude-team" "$BIN_TARGET/claude-team"
+sudo ln -sf "$SCRIPT_DIR/bin/claude-lead" "$BIN_TARGET/claude-lead"
 success "Commands installed:"
 echo "    claude-solo  → Solo Dev Mode"
 echo "    claude-team  → Team Lead Mode"
+echo "    claude-lead  → Project Lead Mode"
 
 # ─── Step 11: Deploy orchestrator CLAUDE.md ──────────────────────────────────
 
@@ -262,6 +265,7 @@ echo -e "  ${BOLD}Usage:${NC}"
 echo ""
 echo -e "  ${GREEN}claude-solo${NC}            Start Claude in Solo Dev mode"
 echo -e "  ${GREEN}claude-team${NC}            Start Claude in Team Lead mode"
+echo -e "  ${GREEN}claude-lead${NC}            Start Claude in Project Lead mode"
 echo -e "  ${GREEN}Ctrl+Cmd+L${NC}             Open iTerm2 Claude Team window"
 echo -e "  ${GREEN}/linear TICKET${NC}         Read a Linear ticket and plan (inside Claude)"
 echo ""
