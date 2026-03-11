@@ -77,7 +77,8 @@ Wrap up the task cleanly:
    ```
    type(EQLS-XXXX): description in imperative present-tense
    ```
-4. **Flag open questions** -- anything that needs follow-up or user decision
+4. **Push and create a PR** -- push the branch and open a PR (see `shared/pr-workflow.md` for format)
+5. **Flag open questions** -- anything that needs follow-up or user decision
 
 ### Immediate Learning Capture
 
@@ -92,4 +93,4 @@ Do not wait for Feedback to capture learnings. If the user corrects you mid-task
 | Read    | Gather context                  | Understanding             |
 | Analyse | Plan the approach               | Ordered steps + approval  |
 | Lint    | Code + validate in a loop       | Green checks              |
-| Feedback| Summarize + commit + learnings  | Clean deliverable         |
+| Feedback| Summarize + commit + PR + learnings | Clean deliverable    |

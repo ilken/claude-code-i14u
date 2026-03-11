@@ -21,7 +21,7 @@ Every task follows: **Read → Analyse + Plan → Implement + Lint → Feedback*
 - Gather context before coding. Load relevant skills and learnings.
 - Plan the approach and get user approval before implementing (unless autonomous bug-fix criteria are met).
 - Validate in a loop until clean. Do not proceed with known failures.
-- Summarize, capture learnings, and commit.
+- Summarize, capture learnings, commit, and create a PR.
 
 Full details: `claude-code-config/skills/shared/ralf-loop.md`
 
