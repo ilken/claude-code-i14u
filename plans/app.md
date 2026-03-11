@@ -95,7 +95,7 @@ Your sole responsibility is writing production code that fulfills the plan requi
 
 **Validation before handoff:**
 ```bash
-yarn code:lint && yarn code:tsc
+yarn code:full-lint
 ```
 Run this in a loop until it passes. Do NOT hand off with lint or type errors.
 
@@ -288,7 +288,7 @@ Your sole responsibility is verifying that ALL requirements from the original pl
 - Verify every requirement from the original task plan is implemented
 - Run the full validation suite one final time:
   ```bash
-  yarn code:lint && yarn code:tsc
+  yarn code:full-lint
   ```
 - Cross-check the implementation against:
   - Original plan requirements (feature completeness)

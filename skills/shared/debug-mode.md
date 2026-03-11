@@ -56,3 +56,25 @@ Once the fix is implemented:
 - Verify the fix resolves the original issue
 - Run validation commands to ensure no regressions
 - Ask for approval to remove the diagnostic logs added in Step 3
+
+---
+
+## Project-Specific Tools
+
+### Backend (NestJS)
+- **BullMQ queue inspection** — check queue status, failed jobs, and retry counts via Bull Dashboard or CLI
+- **Prisma query logging** — enable `log: ['query']` in PrismaClient to see generated SQL
+- **Redis cache checks** — use `redis-cli` to inspect cached keys, TTLs, and stale data
+- **NestJS debug logging** — use `Logger` with verbose mode to trace DI resolution and lifecycle hooks
+
+### App (React Native / Expo)
+- **React Native Debugger / Flipper** — inspect component tree, network requests, and async storage
+- **React Query devtools** — check query cache state, stale queries, and refetch triggers
+- **Performance profiling** — use React DevTools Profiler to identify unnecessary re-renders
+- **Metro bundler logs** — check for module resolution errors and circular dependencies
+
+### Web (Next.js)
+- **Next.js debug mode** — set `DEBUG=*` or use `next dev --inspect` for server-side debugging
+- **React Query devtools** — inspect query cache, background refetches, and error states
+- **SSR vs CSR debugging** — check Network tab for hydration mismatches and double-fetch issues
+- **Build analysis** — use `ANALYZE=true next build` to inspect bundle sizes and code splitting

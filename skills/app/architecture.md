@@ -276,3 +276,11 @@ export const useMainPlayer = () => {
 - Don't use `useContext(SomeContext)` directly in components -- always use the dedicated hook
 - Don't pass un-memoized objects as context values
 - Don't skip `React.memo` on provider components
+
+---
+
+## GraphQL Workflow
+
+- **MUST** create or update GraphQL operation files in `src/api/graphql/**/*.graphql` (do not hand-edit generated operation types/hooks)
+- **MUST** run `yarn codegen` after GraphQL operation changes
+- **MUST** verify generated artifacts are updated (`src/api/graphql.ts`, `src/api/graphql-public.ts` when relevant)

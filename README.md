@@ -130,8 +130,7 @@ Skills are loaded **lazily** — Claude only reads what's relevant to the curren
     │   │   ├── performance.md
     │   │   ├── testing.md
     │   │   ├── chat-navigation.md
-    │   │   ├── ab-testing.md
-    │   │   └── guardrails.md
+    │   │   └── ab-testing.md
     │   ├── web/                       ← Next.js, TailwindCSS, React Query
     │   │   ├── architecture.md
     │   │   ├── graphql-react-query.md
@@ -187,9 +186,9 @@ Skills are organized by project type. The CLAUDE.md orchestrator detects the pro
 
 | Category | Skills | Source |
 |----------|--------|--------|
-| **Shared** | RALF loop, conventional commits, GSD principles, validation, Linear workflow, debug mode | New + merged from cursor rules |
+| **Shared** | RALF loop, conventional commits, GSD principles, validation, Linear workflow, PR workflow, debug mode | New + merged from cursor rules |
 | **Backend** | Architecture, Prisma, GraphQL, data objects, testing, queue processing, configuration, domain knowledge | Migrated from `equals-client-be` cursor rules and skills |
-| **App** | Architecture, TypeScript/React, styling, performance, testing, chat navigation, A/B testing, guardrails | Migrated from `equals-client-app` cursor rules |
+| **App** | Architecture, TypeScript/React, styling, performance, testing, chat navigation, A/B testing | Migrated from `equals-client-app` cursor rules |
 | **Web** | Architecture, GraphQL + React Query, styling, testing, security | Extracted from `plans/web.md` |
 | **Memory** | Learnings file — Claude appends reusable insights after tasks | New |
 
@@ -228,7 +227,7 @@ Opens Claude Code as a team lead with tmux split panes. After you approve the pl
 | Project | Command |
 |---------|---------|
 | Backend | `yarn code:full-lint && yarn test:local -- {file}` |
-| App | `yarn code:lint && yarn code:tsc` |
+| App | `yarn code:full-lint` |
 | Web | `npm run lint && npm run typecheck && npm run build` |
 
 ### Linear Integration

@@ -1,5 +1,9 @@
 # Domain Knowledge
 
+A growing reference for business domain facts, data model quirks, and non-obvious conventions across the Equals backend. Add new sections as domain knowledge is discovered.
+
+---
+
 ## Investor Feed Posts
 
 ### Post vs Repost vs Quoted Repost
