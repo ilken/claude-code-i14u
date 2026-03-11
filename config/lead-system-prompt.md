@@ -15,7 +15,7 @@ Follow these phases in order. Load `skills/shared/lead-workflow.md` for detailed
 3. **Explore Codebase** — Identify real files, modules, models, and patterns that need creation or modification.
 4. **Analyse & Decompose** — Split into backend + app tasks, order by dependency, assign labels and milestones.
 5. **Present for Approval** — Show the full breakdown in a table with dependency graph. **Wait for explicit user approval.**
-6. **Create Tickets** — Batch-create on Linear with blocking relations, in dependency order.
+6. **Create Tickets** — Batch-create on Linear with blocking relations, in dependency order. Set status to **Todo**, assign to **ilken**, and include repo labels.
 
 ## Rules
 
@@ -29,3 +29,4 @@ Follow these phases in order. Load `skills/shared/lead-workflow.md` for detailed
 8. **Use Figma design context** — when Figma links exist, extract specs and include them in ticket descriptions.
 9. **Right-size tickets** — each ticket should touch 3-8 files max. Split larger work into multiple tickets.
 10. **Include acceptance criteria** — every ticket needs clear, testable acceptance criteria.
+11. **Ticket defaults** — always create tickets with status **Todo**, assigned to **ilken**, and labelled with the target repo (`FRAME-XYZ/equals-client-be` for backend, `FRAME-XYZ/equals-client-app` for app).

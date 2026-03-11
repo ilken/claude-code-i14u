@@ -168,6 +168,13 @@ Create tickets in dependency order on Linear.
 2. Create dependent tickets with `blockedBy` relations using captured IDs
 3. Assign all metadata: team, project, milestone, labels, priority, state
 
+### Ticket defaults
+
+Every ticket must be created with:
+- **state**: `Todo`
+- **assignee**: `ilken`
+- **labels**: `FRAME-XYZ/equals-client-be` (backend) or `FRAME-XYZ/equals-client-app` (app)
+
 ### Ticket description template
 
 Each ticket description should follow this structure:
@@ -206,15 +213,16 @@ Each ticket description should follow this structure:
 
 ```
 mcp__linear__save_issue
-  - title: "feat(EQLS-XXXX): ticket title"
+  - title: "ticket title"
   - description: [template above]
-  - teamId: [from mcp__linear__list_teams]
-  - projectId: [from the project]
-  - milestoneId: [if applicable]
-  - labelIds: [from mcp__linear__list_issue_labels]
+  - team: "Equals"
+  - project: [project name]
+  - milestone: [if applicable]
+  - labels: ["FRAME-XYZ/equals-client-be"] or ["FRAME-XYZ/equals-client-app"]
   - priority: [1-4, matching project priority]
-  - stateId: [backlog state from mcp__linear__list_issue_statuses]
-  - blockedByIds: [IDs of tickets this depends on]
+  - state: "Todo"
+  - assignee: "ilken"
+  - blockedBy: [identifiers of tickets this depends on, e.g. "EQLS-1001"]
 ```
 
 ### Post-creation summary

@@ -15,6 +15,24 @@ Append new learnings at the top. Format:
 
 ---
 
+## 2026-03-11 Backend - Use yarn for Prisma commands
+
+Use `yarn prisma generate` (not `npx prisma generate`) for Prisma client generation in the backend project. The project uses yarn throughout.
+
+---
+
+## 2026-03-11 App - Replace Magic Numbers with Named Constants
+
+Avoid magic numbers in component files. Extract numeric literals (sizes, thresholds, offsets, border radii) into named `const` declarations at the top of the file. This improves readability and makes intent clear. Apply this rule proactively when writing or reviewing component code.
+
+---
+
+## 2026-03-11 App - Never Hardcode User-Facing Strings
+
+All user-facing text MUST go through localization (`en.json` + `useLocalization`). This includes section titles, descriptions, labels — not just dynamic content. The rule exists in `skills/app/styling.md` under Localization but is easy to miss. Always check for hardcoded strings before committing.
+
+---
+
 ## 2026-03-10 General - Prettier Before PR
 
 Always run `yarn prettier --write` on changed files **before** committing and creating a PR. Add this to the validation step between lint/tsc and commit.
