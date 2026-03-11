@@ -62,7 +62,7 @@ Load from the detected project's skill directory when relevant to the task:
 
 **Backend**: `architecture.md`, `prisma.md`, `graphql.md`, `data-objects.md`, `testing.md`, `queue-processing.md`, `configuration.md`, `domain-knowledge.md`
 
-**App**: `architecture.md`, `typescript-react.md`, `styling.md`, `performance.md`, `testing.md`, `chat-navigation.md`, `ab-testing.md`
+**App**: `architecture.md`, `typescript-react.md`, `styling.md`, `figma-workflow.md`, `performance.md`, `testing.md`, `chat-navigation.md`, `ab-testing.md`
 
 **Web**: `architecture.md`, `graphql-react-query.md`, `styling.md`, `testing.md`, `security.md`
 
