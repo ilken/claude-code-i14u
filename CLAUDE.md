@@ -23,6 +23,8 @@ Every task follows: **Read → Analyse + Plan → Implement + Lint → Feedback*
 - Validate in a loop until clean. Commit after each logical unit of work.
 - Summarize, capture learnings, push, and create a PR.
 
+**Even when a pre-approved plan is provided (e.g. from plan mode), always run the Read phase first.** Load `shared/changes-validation.md` at minimum so you use the correct validation commands for the project. Never skip Read just because the plan is already approved.
+
 Full details: `claude-code-config/skills/shared/ralf-loop.md`
 
 ---

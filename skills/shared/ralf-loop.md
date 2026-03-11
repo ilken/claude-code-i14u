@@ -16,6 +16,8 @@ Before writing any code, gather full context:
 
 Do not start coding until you understand what is being asked and where it fits.
 
+**This phase is never optional.** Even when a pre-approved plan is provided (e.g. from plan mode), always run the Read phase. At minimum, load `shared/changes-validation.md` to get the correct validation commands for the project. Skipping Read leads to wrong commands and missed workflow steps (commit, PR).
+
 ---
 
 ## A -- Analyse + Plan
