@@ -16,5 +16,6 @@ if ! command -v claude &>/dev/null; then
 fi
 
 exec claude --verbose \
+  --permission-mode plan \
   --append-system-prompt-file "$CONFIG_DIR/solo-system-prompt.md" \
   "$@"
