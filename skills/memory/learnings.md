@@ -3,8 +3,21 @@
 Append new learnings at the top. Format:
 
 ## [DATE] [PROJECT] - [Topic]
-[What was learned]
 
+## 2026-03-12 Backend - Mutation responses must return enriched objects
+When a mutation creates or updates an entity with related data (e.g., conditionGroups), the response must go through the enrichment pipeline (`enrichChatChannels`) instead of returning `fromEntity()` directly. Otherwise nullable relation fields return stale/null data.
+---
+
+## 2026-03-12 Backend - Avoid N+1 in enrichment pipelines
+When fetching related data for a list of entities in `enrichChatChannels`, always use a single batched query (e.g., `findManyByChannelIds` with `WHERE IN`) instead of mapping over IDs with individual queries. Keep enrichment aligned with the existing batched pattern.
+---
+
+## 2026-03-12 Backend - ObjectType constructors must use named props type
+GraphQL ObjectType constructors should accept a single named props type (defined locally or in `.types.ts`) instead of positional parameters. This follows the repo convention against inline types and makes field additions safer.
+---
+
+## 2026-03-12 Backend - Single findMany with optional filters on models
+Models should expose a single `findMany` with optional filter parameters (`chatRoomId?: number; chatRoomIds?: number[]`) instead of multiple specialized finders (`findMany`, `findManyByX`). Grouping/mapping logic belongs in the service layer, not the model.
 ---
 
 ## Maintenance
@@ -69,7 +82,7 @@ Always run `yarn prettier --write` on changed files **before** committing and cr
 
 ### CodeRabbit Review Patterns
 - Raw `pgPool.query()` calls should be wrapped in try-catch with `this.handlePgError(error)` — **not** `handlePrismaError`, which is for Prisma ORM errors only. CodeRabbit's suggestion was right about the try-catch, wrong about which handler.
-- CodeRabbit correctly flags: constructor params should use named domain types from `.types.ts` instead of inline types. **Accept this pattern.**
+- CodeRabbit correctly flags: all arg types in model method signatures must be named types defined in the module's `.types.ts` file — no inline `Omit<>` or anonymous object types. This includes `FindMany*Args` types for query methods. **Accept this pattern.**
 - Test file import paths must use project-root aliases (e.g., `chat-channel/chat-channel.service`) not relative `../` paths.
 
 ### Team Mode Learnings
