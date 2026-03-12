@@ -15,6 +15,26 @@ Append new learnings at the top. Format:
 
 ---
 
+## 2026-03-12 App - MVVM Pattern for Screens
+
+Non-trivial screens MUST follow MVVM: the screen file focuses on rendering/layout only, and a `use{ScreenName}` hook (in a `hooks/` folder next to the screen) owns all query/mutation/state/callback logic. When adding logic to a screen (e.g., mutations, privacy gating, header config), extract it into the screen hook rather than letting the screen accumulate business logic.
+
+Applies to: `src/screens/**/!(hooks|components)/*.{ts,tsx}`
+
+---
+
+## 2026-03-12 General - Always Run Full Lint Before Creating PR
+
+Always run `yarn code:full-lint` before creating a PR, even when the PR creation is a manual/explicit user request. Never skip validation just because the command came directly from the user. This catches prettier formatting issues that ESLint alone misses.
+
+---
+
+## 2026-03-12 App - Use useCallback for onPress Handlers in Components
+
+Never define onPress handlers inline in JSX (e.g., `onPress={() => doSomething()}`). Extract them into `useCallback` hooks to avoid recreating the function on each render. Apply this pattern for all pressable/touchable handlers in component files.
+
+---
+
 ## 2026-03-11 Backend - Use yarn for Prisma commands
 
 Use `yarn prisma generate` (not `npx prisma generate`) for Prisma client generation in the backend project. The project uses yarn throughout.
