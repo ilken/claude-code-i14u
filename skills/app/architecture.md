@@ -140,6 +140,19 @@ export const MyScreen = ({ route, navigation }: Props) => {
 - Define `StyleSheet.create` at the bottom of the screen file
 - Use `useAdjustedBottomTabBarHeight()` for bottom padding on scrollable content
 
+### MVVM Pattern (Required for Non-Trivial Screens)
+
+Non-trivial screens **must** follow MVVM: the screen file focuses on rendering/layout only, and a `use{ScreenName}` hook (in a `hooks/` folder next to the screen) owns all query/mutation/state/callback logic. When adding logic to a screen (e.g., mutations, privacy gating, header config), extract it into the screen hook rather than letting the screen accumulate business logic.
+
+```
+src/screen/{feature}/
+├── {Feature}.screen.tsx          # rendering only
+├── hooks/
+│   └── use{Feature}.hook.ts      # all logic lives here
+├── components/
+│   └── {Component}.component.tsx
+```
+
 ## Component Patterns
 
 ### Props Definition

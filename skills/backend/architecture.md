@@ -166,6 +166,13 @@ export class DomainModule {}
 - Must prefer `QueryBuilderSql` over hand-rolled SQL strings for `pgPool` queries — improve the builder where needed rather than bypassing it
 - Must wrap raw `pgPool.query()` calls in try/catch with `this.handlePgError(error)` (not `handlePrismaError`, which is for Prisma ORM errors only)
 
+### Data Access Patterns
+
+- **Single `findMany` with `isArray`**: Models should expose one `findMany` accepting `id: number | number[]`. Use `Array.isArray(id) ? { in: id } : id` in the where clause. Guard empty arrays with early return. Don't create separate `findMany`/`findManyByIds` methods. Grouping/mapping logic belongs in the service layer, not the model.
+- **Guard consolidated methods against empty filters**: When a `findMany` accepts multiple optional params, add a guard requiring at least one filter is provided. Otherwise `findMany({})` could scan the entire table.
+- **Mutation responses must return enriched objects**: When a mutation creates or updates an entity with related data, the response must go through the enrichment pipeline (e.g., `enrichChatChannels`) instead of returning `fromEntity()` directly. Otherwise nullable relation fields return stale/null data.
+- **Avoid N+1 in enrichment pipelines**: When fetching related data for a list of entities, always use a single batched query (`WHERE IN`) instead of mapping over IDs with individual queries. Keep enrichment aligned with the existing batched pattern.
+
 ## Naming Conventions
 
 ### Files
