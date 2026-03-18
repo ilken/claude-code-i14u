@@ -48,7 +48,8 @@ Write the code, then validate in a loop until clean:
    - Web: `npm run lint && npm run typecheck && npm run build`
 3. **Fix any errors** -- lint, type, test failures
 4. **Repeat** steps 2-3 until all checks pass
-5. **Commit** after each logical unit of work -- don't batch everything into one big commit at the end. Each step of the plan or cohesive file group should be its own commit.
+5. **Self-review** -- run through `shared/self-review-checklist.md` to catch issues that linting misses but reviewers flag (inline types, missing try-catch, redundant queries, etc.)
+6. **Commit** after each logical unit of work -- don't batch everything into one big commit at the end. Each step of the plan or cohesive file group should be its own commit.
 
 Do not move on with known failures. The loop ends when validation is green.
 

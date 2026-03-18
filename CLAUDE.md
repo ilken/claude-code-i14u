@@ -56,6 +56,7 @@ Skills live in `~/Documents/GitHub/claude-code-config/skills/`. Load them **lazi
 - `shared/linear-workflow.md` — Linear ticket workflow
 - `shared/pr-workflow.md` — PR creation and description format
 - `shared/debug-mode.md` — Systematic debugging
+- `shared/self-review-checklist.md` — Pre-commit checklist to catch common review feedback (inline types, error handling, DB patterns)
 - `shared/frontend-design.md` — Distinctive, high-quality frontend design (web components, pages, dashboards, UI styling)
 
 ### Per-project skills
