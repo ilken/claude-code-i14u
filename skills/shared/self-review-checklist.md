@@ -33,6 +33,14 @@ Load this skill alongside `changes-validation.md` during the Lint phase.
 - [ ] **Models are not exposed outside their module.** Only services are exported.
 - [ ] **New tables have both `createdAt` and `updatedAt`.** No exceptions.
 
+## Security
+
+- [ ] **No raw SQL or unsanitized query params.** Use Prisma's query builder or parameterized queries. Never interpolate user input into query strings.
+- [ ] **No hardcoded secrets, API keys, or tokens.** Credentials belong in environment variables, not source code. Check for anything that looks like `sk-`, `Bearer `, API keys, or connection strings.
+- [ ] **No dangerous dynamic execution.** Avoid `eval()`, `new Function()`, `dangerouslySetInnerHTML`, or template literals passed to query engines. If unavoidable, sanitize inputs rigorously.
+- [ ] **New endpoints have auth/permission checks.** Every new resolver, controller, or route must enforce authentication and authorization. No public-by-default.
+- [ ] **No sensitive data in logs.** Don't log passwords, tokens, PII, or full request bodies that may contain user data. Log IDs and metadata instead.
+
 ## Tests
 
 - [ ] **Test with different actors.** Don't only test with the resource owner — include at least one test where the requester is a different user.

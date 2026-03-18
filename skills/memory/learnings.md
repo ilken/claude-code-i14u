@@ -4,6 +4,14 @@ Append new learnings at the top. Format:
 
 ## [DATE] [PROJECT] - [Topic]
 
+## 2026-03-18 Backend - MUTUAL friendship status is symmetric
+When querying `findManyFriends` with `status: [FriendshipStatus.MUTUAL]`, only one direction needs to be checked. If A→B is MUTUAL, B→A is inherently mutual too. Don't query both `(requesterProfileId: [author], recipientProfileId: targets)` and the reverse — one query is sufficient.
+---
+
+## 2026-03-18 Backend - Wrap non-critical side effects in try-catch
+Secondary operations like mention creation should be wrapped in try-catch so failures don't break the primary flow (post/reply creation). Log the error and return silently. This applies to any write-path side effect that isn't essential to the main operation's success.
+---
+
 ## 2026-03-13 Backend - Fail closed in authorization/evaluation logic
 When writing code that evaluates conditions for access control (e.g., channel join conditions, permission checks), always handle the default/unexpected case by denying access (`satisfied = false`). Use explicit `switch` with `default: satisfied = false` rather than `if/else` chains that silently skip unknown values. Failing open in auth logic means malformed data can grant unintended access.
 ---
