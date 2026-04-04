@@ -33,17 +33,9 @@
       "Skill(update-config)",
       "mcp__brave-search",
       "mcp__context7",
-      "mcp__figma",
-      "mcp__linear",
-      "mcp__claude_ai_Figma__get_design_context",
-      "mcp__claude_ai_Figma__get_screenshot",
-      "mcp__claude_ai_Linear__get_issue",
-      "mcp__claude_ai_Linear__get_project",
-      "mcp__claude_ai_Linear__list_issues",
-      "mcp__claude_ai_Linear__list_issue_labels",
-      "mcp__claude_ai_Linear__list_issue_statuses",
-      "mcp__claude_ai_Linear__list_teams",
-      "mcp__claude_ai_Linear__save_issue"
+      "mcp__shadcn",
+      "mcp__iconify",
+      "mcp__21st-dev"
     ],
     "deny": [
       "Bash(: > *)",
