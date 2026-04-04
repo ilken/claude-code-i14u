@@ -12,14 +12,14 @@ Prisma enums ARE allowed (e.g., `Currency`, `ChatChannelType`, `MembershipTier`)
 
 ```typescript
 // BAD - using Prisma model types directly
-import { Item } from '@prisma-generated/client';
+import { Item } from '@prisma/client';
 type Props = Item;
 
 // BAD - Pick/Omit from Prisma model types
 type Props = Pick<Item, 'id' | 'name'>;
 
 // BAD - using Prisma namespace types
-import { Prisma } from '@prisma-generated/client';
+import { Prisma } from '@prisma/client';
 type Props = {
   details: Prisma.InputJsonValue;
 };
@@ -32,7 +32,7 @@ type Props = {
 };
 
 // GOOD - Prisma enums are allowed
-import { Currency, ChatChannelType } from '@prisma-generated/client';
+import { Currency, ChatChannelType } from '@prisma/client';
 type Props = {
   currency: Currency;
   type: ChatChannelType;
@@ -121,7 +121,7 @@ export class CityEntity {
 ### Complete DTO Example
 
 ```typescript
-import { ChatChannelType } from '@prisma-generated/client';
+import { ChatChannelType } from '@prisma/client';
 
 type SearchChatRoomProps = {
   chatRoomId: string;

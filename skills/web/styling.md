@@ -1,58 +1,131 @@
-# Styling
+# Web Styling — Tailwind CSS + shadcn/ui
 
-TailwindCSS conventions and patterns for the web project.
+Conventions for building the component library using Tailwind CSS and shadcn/ui.
 
 ---
 
-## Core Principles
+## Stack
 
-- **Utility-first** -- use Tailwind classes, no custom CSS unless absolutely necessary
-- **No inline styles** -- all styling through Tailwind classes
-- **Design tokens** via `tailwind.config.ts` for colors, spacing, and fonts
-
-## Conditional Classes
-
-Use the `cn()` helper (clsx + tailwind-merge) for conditional and merged classes:
+- **Tailwind CSS v4** — utility-first styling
+- **shadcn/ui** — copy-paste component primitives built on Radix UI
+- **`cn()` helper** — merge class names with conflict resolution
 
 ```typescript
-import { cn } from '@/lib/utils';
+// lib/utils.ts
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-<div className={cn(
-  'flex items-center gap-2',
-  isActive && 'bg-primary text-white',
-  className
-)} />
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 ```
 
-## Responsive Design
+---
 
-Mobile-first approach using Tailwind breakpoints:
+## Component Library Structure
 
 ```
-sm:   640px+
-md:   768px+
-lg:   1024px+
-xl:   1280px+
-2xl:  1536px+
+components/
+└── ui/
+    ├── button.tsx          # shadcn primitive
+    ├── card.tsx            # shadcn primitive
+    ├── input.tsx           # shadcn primitive
+    ├── dialog.tsx          # shadcn primitive
+    ├── badge.tsx           # shadcn + custom variants
+    ├── data-table.tsx      # custom composite using shadcn
+    └── stat-card.tsx       # fully custom primitive
 ```
 
-Write base styles for mobile, then add breakpoints for larger screens:
+**Rule**: `components/ui/` contains only primitives. Feature-specific assemblies go in `components/features/`.
 
-```html
-<div className="flex flex-col md:flex-row lg:gap-8">
+---
+
+## Adding shadcn Components
+
+```bash
+npx shadcn@latest add button
+npx shadcn@latest add card input badge dialog
 ```
 
-## Dark Mode
+Components are copied into `components/ui/` — they're yours to modify.
 
-Use the `dark:` variant for dark mode support:
+---
 
-```html
-<div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+## Custom Variants Pattern
+
+Extend shadcn components with `cva` (class-variance-authority):
+
+```typescript
+// components/ui/badge.tsx
+const badgeVariants = cva(
+  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground',
+        secondary: 'bg-secondary text-secondary-foreground',
+        success: 'bg-green-100 text-green-800 border-green-200',
+        warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        destructive: 'bg-destructive text-destructive-foreground',
+      },
+    },
+    defaultVariants: { variant: 'default' },
+  }
+);
 ```
 
-## What to Avoid
+---
 
-- Inline `style` attributes
-- Custom CSS files (unless for truly global styles or third-party overrides)
-- Arbitrary values when a design token exists
-- Raw color values -- use theme colors from `tailwind.config.ts`
+## Design Tokens via CSS Custom Properties
+
+All design values defined in `globals.css` as CSS custom properties. Tailwind extended to use them.
+
+```css
+/* app/globals.css */
+@layer base {
+  :root {
+    /* Load from DESIGN-TOKENS.md */
+    --color-brand-primary: ...;
+    --color-surface-base: ...;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --color-surface-base: ...;
+  }
+}
+```
+
+See `DESIGN-TOKENS.md` in project root for full token definitions.
+
+---
+
+## Tailwind Class Ordering
+
+Follow the Prettier Tailwind plugin order (enforced automatically if configured):
+1. Layout (display, position, z-index)
+2. Box model (w, h, p, m)
+3. Typography (font, text, leading)
+4. Visual (bg, border, shadow, opacity)
+5. Interactive (cursor, transition, hover/focus)
+
+---
+
+## Rules
+
+- **Never hardcode colors** — use CSS custom property tokens or Tailwind semantic classes
+- **No inline styles** — use Tailwind classes or CSS custom properties
+- **Responsive first** — write mobile styles first, add `md:` / `lg:` overrides
+- **Dark mode via `dark:` prefix** — do not create separate dark stylesheets
+- **`cn()` for conditional classes** — never string-concatenate class names
+- **shadcn for primitives** — don't rebuild buttons, inputs, dialogs from scratch
+
+---
+
+## Referencing Design System
+
+When building UI, always check:
+1. `DESIGN-TOKENS.md` — what tokens exist
+2. `BRAND-VOICE.md` — what aesthetic to aim for
+3. `MOTION-SPEC.md` — how interactions should feel
+
+If these files don't exist in the project root, generate them from the templates in `~/Developer/claude-code-i14u/skills/shared/templates/`.

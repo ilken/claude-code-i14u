@@ -1,83 +1,85 @@
-# TypeScript & React Patterns
+# TypeScript & React Patterns (React Native)
+
+---
 
 ## TypeScript Guidelines
 
-### Type System
-
 - Use `type` over `interface`
-- Avoid enums; use maps instead
-- Use strict mode in TypeScript
-- Use functional components with TypeScript types
+- Avoid enums — use `as const` maps instead
+- Use strict mode
+- Use functional components only
 
-### Error Handling
+```typescript
+// ✅ const map over enum
+export const OrderStatus = {
+  PENDING: 'pending',
+  ACTIVE: 'active',
+  DONE: 'done',
+} as const;
+export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 
-- Use Zod for runtime validation
-- Handle errors at the beginning of functions
-- Use early returns for error conditions
-- Implement global error boundaries
+// ❌ enum
+enum OrderStatus { PENDING, ACTIVE, DONE }
+```
+
+---
 
 ## Hook Patterns
 
-### Mutation Hooks (Optimistic Updates)
-
-Use `onMutate` for optimistic cache updates, `onError` to rollback, and `onSettled` to invalidate:
+### Mutation with Optimistic Updates
 
 ```typescript
-export function useFollow() {
-  const queryClient = useAppQueryClient();
+export function useFollowUser() {
+  const queryClient = useQueryClient();
 
-  const { mutateAsync, isLoading } = useFollowProfileMutation({
-    async onMutate({ input: { followeeIds } }) {
-      queryClient.setQueryData(isFollowingProfileQueryKey(followeeId), true);
+  return useMutation({
+    mutationFn: (userId: string) => api.followUser(userId),
+
+    async onMutate(userId) {
+      await queryClient.cancelQueries({ queryKey: ['following', userId] });
+      const previous = queryClient.getQueryData(['following', userId]);
+      queryClient.setQueryData(['following', userId], true);
+      return { previous };
     },
-    onError(_, { input: { followeeIds } }) {
-      queryClient.setQueryData(isFollowingProfileQueryKey(followeeId), false);
+
+    onError(_err, userId, context) {
+      queryClient.setQueryData(['following', userId], context?.previous);
     },
-    onSettled() {
-      queryClient.invalidateQueries({ queryKey: [...] });
+
+    onSettled(_data, _err, userId) {
+      queryClient.invalidateQueries({ queryKey: ['following', userId] });
     },
   });
-
-  const follow = useCallback(async (followeeId: number) => {
-    await mutateAsync({ ... });
-  }, [mutateAsync]);
-
-  return { follow, isLoading };
 }
 ```
 
-### Safe Operation Hooks
+### Safe Operation Hooks (try/catch, return boolean)
 
-Wrap external/async calls in try/catch, return a boolean for success, log via `logger.error`:
+Wrap async operations that can fail silently:
 
 ```typescript
 export function useSendMessageSafe() {
-  return useCallback(async (args: SendMessageArgs): Promise<boolean> => {
+  return useCallback(async (channelId: string, text: string): Promise<boolean> => {
     try {
-      const channel = await getChannel(args.channelId);
-      if (!channel) return false;
-
-      await channel.sendMessage({ ... });
+      await chatClient.sendMessage(channelId, { text });
       return true;
     } catch (error) {
-      logger.error("Failed to send message", { error });
+      console.error('Failed to send message', error);
       return false;
     }
   }, []);
 }
 ```
 
-### Infinite Query Hooks
-
-Use `useInfiniteQuery` with `getNextPageParam`, flatten pages in returned `data`:
+### Infinite / Paginated Queries
 
 ```typescript
-export const usePaginatedItems = ({ take = 20 }) => {
+export const usePaginatedPosts = (take = 20) => {
   const query = useInfiniteQuery({
-    queryKey: [InvalidateQueryKeys.Items, { take }],
-    queryFn: fetchItems,
+    queryKey: ['posts', { take }],
+    queryFn: ({ pageParam = 0 }) => api.getPosts({ skip: pageParam, take }),
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage?.data?.length < take) return undefined;
+      if (lastPage.data.length < take) return undefined;
       return allPages.length * take;
     },
   });
@@ -90,52 +92,118 @@ export const usePaginatedItems = ({ take = 20 }) => {
 };
 ```
 
-### Error Handling Hooks
-
-Switch on `EqualsHttpError.type` for typed error handling, map to user-facing actions:
+### Typed Error Handling in Hooks
 
 ```typescript
-export const useHandleChatError = () => {
-  const { showAgeMismatchToast } = useAgeMismatchToast();
+export const useHandleApiError = () => {
+  const showToast = useToast();
 
   return useCallback((error: unknown) => {
-    if (error instanceof EqualsHttpError) {
-      switch (error.type) {
-        case EqualsClientErrorType.ChatChannel_AgeMismatch:
-          showAgeMismatchToast();
+    if (error instanceof ApiError) {
+      switch (error.code) {
+        case 'NOT_FOUND':
+          showToast({ title: 'Item not found' });
+          return;
+        case 'UNAUTHORIZED':
+          showToast({ title: 'Please log in again' });
           return;
       }
     }
+    // Re-throw unknown errors
     throw error;
-  }, [showAgeMismatchToast]);
+  }, [showToast]);
 };
 ```
 
-### React Query Stability Rules
+---
 
-- **MUST** keep `queryFn` stable by declaring it outside React components/hooks (no inline `queryFn` in `useQuery`/`useInfiniteQuery`)
-- **MUST** keep `getNextPageParam` stable by declaring it outside component/hook scope (use the passed `queryKey` to extract dynamic variables)
-- **MUST** build query keys from shared keys in `@src/hooks/invalidate-queries/useInvalidateQueries.ts` (`InvalidateQueryKeys`)
-- **MUST** add a new enum key in `InvalidateQueryKeys` before introducing a new custom query key string
+## React Query Rules
 
-### General Hook Rules
+### Query key factory (prevents duplication)
 
-- **MUST** wrap returned callbacks in `useCallback`
-- **MUST** memoize returned objects/arrays with `useMemo`
-- **MUST** include all dependencies in dependency arrays (`exhaustive-deps` is enforced)
+```typescript
+// lib/query-keys.ts
+export const queryKeys = {
+  users: {
+    all: () => ['users'] as const,
+    detail: (id: string) => ['users', id] as const,
+    posts: (id: string) => ['users', id, 'posts'] as const,
+  },
+  posts: {
+    all: () => ['posts'] as const,
+    detail: (id: string) => ['posts', id] as const,
+  },
+} as const;
+```
+
+### Stable queryFn — declare outside component/hook scope
+
+```typescript
+// ❌ inline — new function reference on every render
+useQuery({
+  queryKey: queryKeys.users.detail(id),
+  queryFn: () => api.getUser(id),
+});
+
+// ✅ stable reference
+const fetchUser = (id: string) => api.getUser(id);
+
+useQuery({
+  queryKey: queryKeys.users.detail(id),
+  queryFn: () => fetchUser(id),
+});
+```
+
+### Hook return rules
+
+- **Always** wrap returned callbacks in `useCallback`
+- **Always** memoize returned objects/arrays with `useMemo`
+- **Always** include all dependencies (ESLint `exhaustive-deps` rule)
+
+```typescript
+export function useUserActions(userId: string) {
+  const mutation = useFollowUser();
+
+  const follow = useCallback(() => {
+    mutation.mutate(userId);
+  }, [mutation, userId]);
+
+  return useMemo(() => ({
+    follow,
+    isLoading: mutation.isPending,
+  }), [follow, mutation.isPending]);
+}
+```
+
+---
 
 ## State Management
 
-### Data Management
+- **React Query** — all server/async state
+- **Jotai or Zustand** — cross-screen UI state (modals, selected items, app-level flags)
+- **`useState`** — local UI state only (input value, accordion open/closed)
+- **Context** — stable shared values (theme, auth, locale) — not for frequently-updating state
+- Minimize `useState` + `useEffect` combinations — prefer derived state or React Query
 
-- Use Jotai for cross-screen state management
-- Use react-query v4 for data fetching and caching
-- Always access a context via a hook
-- Declare a hook for each context
+---
 
-### Performance
+## Error Handling
 
-- Minimize the use of `useState` and `useEffect`
-- Prefer context and reducers for state management
-- Use `useCallback` when defining callback functions
-- Use `useMemo` for expensive operations and to memoize reference-type values
+- Validate external data with Zod at the API boundary
+- Handle errors at the top of functions with early returns
+- Use global error boundaries for unrecoverable errors
+- Never swallow errors silently — at minimum log them
+
+```typescript
+// Zod at API boundary
+const UserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+});
+
+const fetchUser = async (id: string): Promise<User> => {
+  const raw = await api.get(`/users/${id}`);
+  return UserSchema.parse(raw); // throws if shape is wrong
+};
+```
