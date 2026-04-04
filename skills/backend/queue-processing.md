@@ -1,61 +1,43 @@
-# Queue Processing (BullMQ + NestJS)
+# Queue Processing
 
-Generic BullMQ patterns for NestJS backends.
+## Overview
 
----
+All queue processors must produce consistent, queryable metrics and logs. The `AbstractQueueProcessor` base class (`src/apps/queue-consumer/abstract-queue.processor.ts`) extends `WorkerHost` from `@nestjs/bullmq` and centralises:
 
-## Setup
+- **Consistent log flow** -- debug "Started processing job", log "Processed job"
+- **`timeOnQueueMs` metric** -- processing-time delta relative to job creation
+- **Unified error handling** via `handleError` (`@OnWorkerEvent('failed')`) -- `EqualsNotFoundError` detection, max-attempts logging
+- **Serialised log context** -- every log entry includes job id, name, data, attempts, and timestamps
 
-Use config-validated Redis connection — never read `process.env` directly in modules.
+## How to Use
 
-```bash
-npm install @nestjs/bullmq bullmq
-```
-
-```typescript
-// app.module.ts
-import { BullModule } from '@nestjs/bullmq';
-import { ConfigService } from '@nestjs/config';
-
-@Module({
-  imports: [
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get('REDIS_HOST'),
-          port: config.get('REDIS_PORT'),
-        },
-      }),
-    }),
-  ],
-})
-export class AppModule {}
-```
-
----
-
-## Step 1: Define Queue Constants
+### Step 1: Define Queue Constants
 
 ```typescript
-// my-domain/my-domain.constants.ts
-export const MY_DOMAIN_QUEUE = 'my-domain-queue';
+// src/my-domain/my-domain.constants.ts
+export const MyDomainQueue = 'my-domain-queue';
 
 export enum MyDomainQueueJobs {
   ProcessSomething = 'process-something',
-  SendNotification = 'send-notification',
 }
 ```
 
----
-
-## Step 2: Register Queue in Domain Module
+### Step 2: Register the Queue in your Domain Module
 
 ```typescript
-// my-domain/my-domain.module.ts
+// src/my-domain/my-domain.module.ts
+import { Module } from '@nestjs/common';
+import { BullConnections } from 'global/bull/bull.types';
+import { EqualsBullModule } from 'global/bull/equals-bull.module';
+import { MyDomainQueue } from 'my-domain/my-domain.constants';
+import { MyDomainService } from 'my-domain/my-domain.service';
+
 @Module({
   imports: [
-    BullModule.registerQueue({ name: MY_DOMAIN_QUEUE }),
+    EqualsBullModule.registerQueue({
+      connection: BullConnections.General,
+      name: MyDomainQueue,
+    }),
   ],
   providers: [MyDomainService],
   exports: [MyDomainService],
@@ -63,190 +45,147 @@ export enum MyDomainQueueJobs {
 export class MyDomainModule {}
 ```
 
----
-
-## Step 3: Add Jobs from a Service
+### Step 3: Add Jobs to the Queue
 
 ```typescript
-// my-domain/my-domain.service.ts
+import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { MyDomainQueue, MyDomainQueueJobs } from 'my-domain/my-domain.constants';
+import { MyJobData } from 'my-domain/my-domain.types';
+
 @Injectable()
 export class MyDomainService {
   constructor(
-    @InjectQueue(MY_DOMAIN_QUEUE)
+    @InjectQueue(MyDomainQueue)
     private readonly queue: Queue,
   ) {}
 
-  async queueProcessSomethingJob(data: MyJobData): Promise<void> {
+  public async queueProcessSomethingJob(data: MyJobData): Promise<void> {
     await this.queue.add(MyDomainQueueJobs.ProcessSomething, data, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: true,
-      removeOnFail: 100, // keep last 100 failed jobs for debugging
     });
   }
 }
 ```
 
----
+### Step 4: Extend AbstractQueueProcessor
 
-## Step 4: Create a Processor
+Create processor in `src/apps/queue-consumer/`.
 
-Keep processors thin — delegate real work to services. The processor's job is routing and error observability, not business logic.
+**Simple single-job processor:**
 
 ```typescript
-// my-domain/my-domain.processor.ts
-import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
+import { Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Logger } from '@nestjs/common';
+import { AbstractQueueProcessor } from 'apps/queue-consumer/abstract-queue.processor';
+import { DEFAULT_WORKER_OPTIONS } from 'global/bull/bull.types';
+import { MyDomainQueue } from 'my-domain/my-domain.constants';
+import { MyJobData } from 'my-domain/my-domain.types';
+import { MyDomainService } from 'my-domain/my-domain.service';
 
-@Processor(MY_DOMAIN_QUEUE)
-export class MyDomainProcessor extends WorkerHost {
-  private readonly logger = new Logger(MyDomainProcessor.name);
-
+@Processor(MyDomainQueue, DEFAULT_WORKER_OPTIONS)
+export class MyDomainQueueProcessor extends AbstractQueueProcessor<MyJobData> {
   constructor(private readonly myService: MyDomainService) {
     super();
   }
 
-  async process(job: Job): Promise<void> {
-    this.logger.debug(`Processing job ${job.id} (${job.name})`);
-
-    switch (job.name) {
-      case MyDomainQueueJobs.ProcessSomething:
-        await this.myService.doSomething(job.data);
-        break;
-
-      case MyDomainQueueJobs.SendNotification:
-        await this.myService.sendNotification(job.data);
-        break;
-
-      default:
-        this.logger.warn(`Unknown job name: ${job.name}`);
-    }
-
-    this.logger.log(`Completed job ${job.id} (${job.name})`);
-  }
-
-  @OnWorkerEvent('failed')
-  onFailed(job: Job, error: Error): void {
-    this.logger.error(
-      `Job ${job.id} (${job.name}) failed after ${job.attemptsMade} attempts`,
-      error.stack,
-    );
+  public async process(job: Job<MyJobData>): Promise<void> {
+    await this.processWithLogging(job, async (data) => {
+      await this.myService.doSomething(data);
+    });
   }
 }
 ```
 
----
-
-## Step 5: Register Processor in a Queue Consumer Module
-
-Keep all processors in a dedicated module so the domain modules stay clean and the consumer module can be imported once in `AppModule`:
+**Multi-job processor (single queue, multiple job names):**
 
 ```typescript
-// queue-consumer/queue-consumer.module.ts
+@Processor(MyDomainQueue, DEFAULT_WORKER_OPTIONS)
+export class MyDomainQueueProcessor extends AbstractQueueProcessor<JobAData | JobBData> {
+  constructor(private readonly myService: MyDomainService) {
+    super();
+  }
+
+  public async process(job: Job<JobAData | JobBData>): Promise<void> {
+    switch (job.name) {
+      case MyDomainQueueJobs.JobA:
+        await this.processWithLogging(job, async (data) => {
+          await this.myService.handleJobA(data as JobAData);
+        });
+        break;
+
+      case MyDomainQueueJobs.JobB:
+        await this.processWithLogging(job, async (data) => {
+          await this.myService.handleJobB(data as JobBData);
+        });
+        break;
+
+      default:
+        this.logger.error(`Unknown job name on MyDomainQueueProcessor`, {
+          job: QueueJobUtils.getJobDataForLogging(job),
+        });
+    }
+  }
+}
+```
+
+**Processor with custom worker options (e.g. rate limiting):**
+
+```typescript
+@Processor(MyDomainQueue, {
+  ...DEFAULT_WORKER_OPTIONS,
+  limiter: { max: 1000, duration: 60000 },
+})
+export class MyDomainQueueProcessor extends AbstractQueueProcessor<MyJobData> {
+  // ...
+}
+```
+
+### Step 5: Register the Processor
+
+Add the processor to `src/apps/queue-consumer/queue.consumer.module.ts`:
+
+```typescript
 @Module({
-  imports: [MyDomainModule],
-  providers: [MyDomainProcessor],
+  imports: [
+    // ... existing imports
+    MyDomainModule,
+  ],
+  providers: [
+    // ... existing providers
+    MyDomainQueueProcessor,
+  ],
 })
 export class QueueConsumerModule {}
 ```
 
----
-
-## Idempotency — Design Jobs to be Safe to Retry
-
-BullMQ retries jobs on failure. If your job sends an email, charges a card, or inserts a record, running it twice causes duplicates. Design every job handler to be idempotent:
-
-- **Check before acting**: `if (await this.emailService.alreadySent(jobId)) return;`
-- **Use upsert over insert**: `prisma.record.upsert({ where: { jobId } })` instead of `create`
-- **Use `jobId` for deduplication**: BullMQ won't add a second job with the same ID if the first is still in the queue
-
-```typescript
-// Deduplicate: only one job per user per type in the queue at a time
-await this.queue.add(MyDomainQueueJobs.SendNotification, data, {
-  jobId: `notification-${data.userId}`, // stable, deterministic ID
-  attempts: 3,
-  backoff: { type: 'exponential', delay: 5000 },
-});
-```
-
----
-
-## Job Options Reference
-
-```typescript
-await this.queue.add(jobName, data, {
-  attempts: 3,                              // Retry up to 3 times
-  backoff: {
-    type: 'exponential',                    // 'exponential' | 'fixed'
-    delay: 5000,                            // 5s base delay
-  },
-  delay: 10000,                             // Delay first execution by 10s
-  priority: 1,                              // Lower number = higher priority
-  removeOnComplete: true,                   // Clean up on success
-  removeOnFail: 100,                        // Keep last 100 failed for debugging
-  jobId: `unique-${data.id}`,              // Deduplicate by job ID
-});
-```
-
----
-
-## Scheduled / Repeatable Jobs
-
-```typescript
-// Register a repeating job (cron-like)
-await this.queue.add(
-  'daily-summary',
-  {},
-  {
-    repeat: {
-      pattern: '0 9 * * *', // Every day at 9am
-      tz: 'UTC',
-    },
-  },
-);
-```
-
----
-
-## Monitoring with BullBoard
-
-BullBoard gives you a visual dashboard for inspecting queues, retrying failed jobs, and monitoring throughput — invaluable in production.
-
-```bash
-npm install @bull-board/nestjs @bull-board/api @bull-board/express
-```
-
-```typescript
-// app.module.ts
-import { BullBoardModule } from '@bull-board/nestjs';
-import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
-import { ExpressAdapter } from '@bull-board/express';
-
-@Module({
-  imports: [
-    BullBoardModule.forRoot({
-      route: '/queues',
-      adapter: ExpressAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: MY_DOMAIN_QUEUE,
-      adapter: BullMQAdapter,
-    }),
-  ],
-})
-export class AppModule {}
-```
-
-Protect the `/queues` route with an admin auth guard in production.
-
----
-
 ## Key Rules
 
-1. **One queue per domain** — don't share queues across unrelated modules
-2. **Keep processors thin** — delegate to services for business logic
-3. **Always log on failure** — use `@OnWorkerEvent('failed')`
-4. **Idempotent jobs** — jobs will be retried; design every handler to be safe to run twice
-5. **Use `jobId` for deduplication** — prevents duplicate processing for the same entity
-6. **Use `forRootAsync`** — connect via `ConfigService`, not raw `process.env`
+1. **Override `process` from `WorkerHost`** -- Declare as `process(job: Job<T>): Promise<void>` with the concrete job data type
+2. **Call `this.processWithLogging()`** -- Pass the job and a callback containing only business logic
+3. **Do NOT add `@OnWorkerEvent('failed')`** -- The abstract class already registers `handleError`. Adding another creates duplicate handlers
+4. **Do NOT add try/catch** -- `processWithLogging` lets errors propagate to `handleError` automatically
+5. **Use `DEFAULT_WORKER_OPTIONS`** -- Import from `global/bull/bull.types`. Override individual options via spread when needed
+6. **`@Processor` replaces both `@Processor` and `@Process`** -- In `@nestjs/bullmq`, there is no `@Process` decorator. The `process` method is inherited from `WorkerHost`
+
+## Metrics You Get Automatically
+
+1. **Consistent log shape** -- every processor emits the same structured fields
+2. **`timeOnQueueMs`** -- time delta between job creation and processing start
+3. **`processingTime`** -- time delta between processing start and finish
+4. **`totalTime`** -- total time from job creation to completion
+5. **`EqualsNotFoundError` handling** -- logged as `warn`, does not trigger max-attempts error logging
+6. **Max Attempts Logging** -- `error` when `job.attemptsMade >= jobMaxAttempts`
+7. **`onMaxAttempts` hook** -- override in your processor for custom behaviour (e.g. Slack alerts) when a job exhausts all retries
+8. **Logger initialization** -- the abstract class creates the `Logger` instance; no need to declare one
+
+## Notes
+
+- The callback passed to `this.processWithLogging()` should contain only business logic
+- Never add custom logging for job start/success/failure
+- Queue consumers must be App Modules in `src/apps/queue-consumer/`
+- Queues must be registered in domain modules using `EqualsBullModule.registerQueue()`
+- Queue names must be prefixed with the domain name
+- Job data classes live in `src/<domain>/job/` or `src/<domain>/jobs/`

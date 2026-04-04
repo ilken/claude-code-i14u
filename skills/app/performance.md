@@ -1,130 +1,165 @@
-# React Native / Expo Performance
+# Performance & Feature Development
 
----
+## React Native Performance
 
-## Priority Order
+Performance optimization guide covering JavaScript/React, Native (iOS/Android), and bundling optimizations.
+
+### When to Apply
+
+- Debugging slow/janky UI or animations
+- Investigating memory leaks (JS or native)
+- Optimizing app startup time (TTI)
+- Reducing bundle or app size
+- Writing native modules (Turbo Modules)
+- Profiling React Native performance
+
+### Priority Order
 
 | Priority | Category | Impact |
 |----------|----------|--------|
 | 1 | FPS & Re-renders | CRITICAL |
 | 2 | Bundle Size | CRITICAL |
-| 3 | TTI (Time to Interactive) | HIGH |
+| 3 | TTI Optimization | HIGH |
 | 4 | Native Performance | HIGH |
 | 5 | Memory Management | MEDIUM-HIGH |
 | 6 | Animations | MEDIUM |
 
----
+### Critical: FPS & Re-renders
 
-## Problem → Solution Map
+- Replace ScrollView with FlatList/FlashList for lists
+- Use React Compiler for automatic memoization
+- Use atomic state (Jotai/Zustand) to reduce re-renders
+- Use `useDeferredValue` for expensive computations
+
+### Critical: Bundle Size
+
+- Avoid barrel imports (import directly from source)
+- Remove unnecessary Intl polyfills (Hermes has native support)
+- Enable tree shaking (Expo SDK 52+ or Re.Pack)
+- Enable R8 for Android native code shrinking
+
+### High: TTI Optimization
+
+- Disable JS bundle compression on Android (enables Hermes mmap)
+- Use native navigation (react-native-screens)
+- Defer non-critical work with `InteractionManager`
+
+### High: Native Performance
+
+- Use background threads for heavy native work
+- Prefer async over sync Turbo Module methods
+- Use C++ for cross-platform performance-critical code
+
+### Problem to Solution Mapping
 
 | Problem | Solution |
 |---------|----------|
-| App feels janky | Profile FPS → profile React renders |
-| Too many re-renders | React Profiler → React Compiler / memo |
-| Slow startup (TTI) | Measure TTI → analyze JS bundle |
-| Large app size | R8 for Android, tree shaking |
-| Memory growing | JS leak tools or native instruments |
-| Animation drops frames | Reanimated worklets |
-| List scroll jank | FlashList / LegendList with proper config |
+| App feels slow/janky | Profile FPS, then profile React renders |
+| Too many re-renders | React profiler, then React Compiler |
+| Slow startup (TTI) | Measure TTI, then analyze JS bundle |
+| Large app size | Analyze app size, then R8 for Android |
+| Memory growing | JS memory leak tools or native leak tools |
+| Animation drops frames | Use Reanimated worklets |
+| List scroll jank | Use FlashList/LegendList with proper config |
 | TextInput lag | Use uncontrolled components |
 
----
+## Feature Development Guidelines
 
-## Critical: FPS & Re-renders
+Performance-first guidelines for building new features, especially lists and scrollable content.
 
-- **Replace `ScrollView` with `FlashList` or `LegendList`** for any list > 10 items
-- Use **React Compiler** (Expo SDK 52+) for automatic memoization
-- Use atomic state (Jotai/Zustand) to reduce component re-render scope
-- Use `useDeferredValue` for expensive derived computations
-- Use `React.memo` on leaf components and list-rendered items
+### Rule 1: Keep `renderItem` Components Flat and Simple
 
----
+Components rendered via `renderItem` must be lightweight shells -- no heavy hooks, no complex logic. They receive data and callbacks as props.
 
-## Critical: Bundle Size
-
-- **Avoid barrel imports** — import directly from source files
-  ```typescript
-  // ❌ imports entire library
-  import { Button } from '@components';
-  // ✅ direct import
-  import { Button } from '@components/Button/Button.component';
-  ```
-- Remove unused Intl polyfills (Hermes has native support)
-- Enable tree shaking (Expo SDK 52+ or Re.Pack)
-- Enable **R8** for Android native code shrinking
-
----
-
-## High: TTI Optimization
-
-- Disable JS bundle compression on Android (enables Hermes mmap for faster startup)
-- Use `react-native-screens` for native navigation (already included with Expo Router)
-- Defer non-critical work with `InteractionManager`:
-  ```typescript
-  useEffect(() => {
-    InteractionManager.runAfterInteractions(() => {
-      // analytics, prefetch, non-critical setup
-    });
-  }, []);
-  ```
-
----
-
-## List Performance Rules
-
-### Rule 1: Keep `renderItem` components flat and prop-driven
-
-Components inside `renderItem` must be lightweight shells. No heavy hooks, no API calls. Callbacks come as props from the parent.
+**Bad -- hook initialized per item:**
 
 ```tsx
-// ❌ hook initialized N times (once per item)
-const FeedItem = ({ item }: Props) => {
-  const { follow } = useFollowUser(); // duplicated per item
-  return <Text onPress={() => follow(item.userId)}>{item.title}</Text>;
+export const MusicFeedItemAvatar = ({ item }: Props) => {
+  const { addFriend } = useAddFriend(); // duplicated N times
+  // ...
 };
-
-// ✅ hook initialized once at list level, passed as prop
-const { follow } = useFollowUser();
-const handleFollow = useCallback((userId: string) => follow(userId), [follow]);
-
-// renderItem
-<FeedItem item={item} onFollow={handleFollow} />
 ```
 
-**`renderItem` checklist:**
-- No heavy hooks (mutations, queries, navigation, toasts)
-- All callbacks passed as props
-- Minimal local state — derive from props
-- No `useEffect` with side effects
-
-### Rule 2: No inline styles high in the JSX tree
-
-Inline objects create new references on every render, breaking `React.memo`.
+**Good -- callback passed as prop, hook initialized once in parent:**
 
 ```tsx
-// ❌ new object reference every render
-<View style={{ flexDirection: 'row', padding: 12 }} />
+// Parent (list-level or screen-level)
+const { addFriend } = useAddFriend();
 
-// ✅ StyleSheet (stable reference)
+const handleAddFriend = useCallback(
+  (author: MusicFeedPostAuthor) => {
+    addFriend({
+      friend: transformFeedPostAuthorToDetailedFriend(author),
+      source: "music_feed",
+    });
+  },
+  [addFriend],
+);
+
+// Inside renderItem
+<MusicFeedItemAvatar item={item} onAddFriend={handleAddFriend} />;
+```
+
+**Checklist for `renderItem` components:**
+
+- No heavy hooks (mutations, queries, navigation, toasts, etc.)
+- All actions come in as callback props
+- Minimal state -- prefer deriving values from props
+- No `useEffect` with side effects
+
+### Rule 2: No Inline Object or Array Styles High in the JSX Tree
+
+Inline objects/arrays create new references on every render, breaking `React.memo`.
+
+**Good -- use StyleSheet or memoized styles:**
+
+```tsx
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', padding: 12 },
+  container: { flexDirection: "row", padding: 12 },
+  avatar: { backgroundColor: Color.GREY },
+  content: { marginTop: 8 },
 });
+```
 
-// ✅ dynamic but memoized
+If dynamic styles are needed, memoize them:
+
+```tsx
 const dynamicStyle = useMemo(
-  () => [styles.row, { marginTop: spacing }],
+  () => [styles.content, { marginTop: spacing }],
   [spacing],
 );
 ```
 
-### Rule 3: Add `backgroundColor` to images
+### Rule 3: Use `EQFastText` and `EQFastView` Inside List Items
 
-Prevents layout shift while images load:
+Inside list items, prefer `EQFastText` and `EQFastView` over standard `Text`/`View`. These bypass the JS-side wrapper and render directly to native.
+
+```tsx
+import { EQFastView } from "@components/eq-view/EQView";
+import { EQFastText } from "@components/foundations/eq-text/EQText.component";
+
+const MusicFeedItemContent = ({ title, subtitle }: Props) => (
+  <EQFastView style={styles.container}>
+    <EQFastText variant="16BoldParagraph">{title}</EQFastText>
+    <EQFastText variant="14RegularParagraph">{subtitle}</EQFastText>
+  </EQFastView>
+);
+```
+
+**Caveats:**
+
+- Do NOT use `EQFastView` when accessibility matters (screen readers)
+- Do NOT use `EQFastView` as an ancestor of a `Text` element
+- Use standard components for interactive/accessible areas, fast components for decorative/layout wrappers
+
+### Rule 4: Add `backgroundColor` to Images
+
+Images should always have a solid `backgroundColor` (typically `Color.GREY` or `Color.BLACK_05`) so loading shows a placeholder color instead of a blank gap.
 
 ```tsx
 const styles = StyleSheet.create({
   avatar: {
-    backgroundColor: Colors.backgroundElevated,
+    backgroundColor: Color.GREY,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -132,78 +167,53 @@ const styles = StyleSheet.create({
 });
 ```
 
-### Rule 4: Use `FlashList` (or `LegendList`) for large lists
+## Implementation Details
 
-```tsx
-import { FlashList } from '@shopify/flash-list';
+### Image Handling
 
-<FlashList
-  data={items}
-  renderItem={({ item }) => <FeedItem item={item} onAction={handleAction} />}
-  estimatedItemSize={80}
-  keyExtractor={(item) => item.id}
-/>
-```
+- Use expo-image for all image components
+- Use `EqualsImage` for all images from our server
+- When using `EqualsImage`, you must provide either a `width` prop or an `optimizedSize` prop
+- Implement proper image loading and error states
+- Use appropriate image formats (WebP where supported)
+- Use proper image caching strategies (memory-disk for expo-image based components)
 
----
+### Animations
 
-## Animations
+- Use react-native-reanimated for all animations
+- Implement proper gesture handling with react-native-gesture-handler
 
-- Use **react-native-reanimated** for all animations — runs on the UI thread
-- Use **react-native-gesture-handler** for touch gestures
-- Never animate layout properties (`width`, `height`, `top`, `left`) — animate `transform` instead
-- Use `withTiming` / `withSpring` from Reanimated — avoid JS-side animation loops
+### Navigation
 
-```typescript
-import Animated, { useSharedValue, withSpring, useAnimatedStyle } from 'react-native-reanimated';
+- Use react-navigation library for navigation
+- Implement deep linking support
+- Handle navigation state properly
 
-const scale = useSharedValue(1);
+### Lists
 
-const animatedStyle = useAnimatedStyle(() => ({
-  transform: [{ scale: scale.value }],
-}));
+- Use LegendList for virtualized lists and leverage its performance boosting configurations
+- Use FlashList as an alternative for high-performance lists
 
-const onPress = () => {
-  scale.value = withSpring(0.95, { damping: 15 });
-};
-```
+### Messaging / Chat
 
----
+- Use `stream-chat-expo` (`ChannelList`, `Channel`, `MessageList`) for all chat UI
+- Three separate `ChannelList` instances exist: DirectMessages, Chatrooms, MessageRequests
+- Event handler changes must be applied consistently across all three screens
+- Type aliases for handler params live in `Chat.types.ts`
+- Channel type guards (`isDirectMessageChannel`, `isArtistChannel`) live in `Chat.constants.ts`
 
-## Image Handling
+### Form Building
 
-- Use **expo-image** for all image components (caching, progressive loading, WebP support)
-- Always provide explicit `width` and `height` — never let images size themselves
-- Set `contentFit` explicitly: `'cover'` | `'contain'` | `'fill'`
+- Use formik for form state management
+- Use Zod for form validation schemas
 
-```tsx
-import { Image } from 'expo-image';
+## Feature Development Checklist
 
-<Image
-  source={{ uri: avatarUrl }}
-  style={styles.avatar}
-  contentFit="cover"
-  transition={200}
-/>
-```
+When building or reviewing a feature with lists:
 
----
-
-## Forms
-
-- Use **react-hook-form** for form state (lighter than Formik)
-- Use **Zod** for validation schemas
-
-```typescript
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
-
-const { control, handleSubmit } = useForm({
-  resolver: zodResolver(schema),
-});
-```
+- `renderItem` components are flat -- no heavy hooks, callbacks come as props
+- Heavy hooks are initialized once at the list/screen level
+- No inline object/array styles high in the JSX tree
+- `EQFastText` and `EQFastView` used inside list items where appropriate
+- All images have a `backgroundColor` for smooth loading transitions
+- `StyleSheet.create` used for all static styles

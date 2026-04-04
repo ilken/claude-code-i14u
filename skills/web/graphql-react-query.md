@@ -1,233 +1,81 @@
-# GraphQL + React Query (Next.js)
+# GraphQL + React Query
 
-Standard: `graphql-request` as the GraphQL client + TanStack Query v5 for server state.
-
----
-
-## Setup
-
-```typescript
-// lib/api.ts — GraphQL client singleton
-import { GraphQLClient, ClientError } from 'graphql-request';
-
-export const apiClient = new GraphQLClient(
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/graphql',
-  {
-    credentials: 'include', // for cookie-based auth
-  },
-);
-```
-
-```typescript
-// lib/query-client.tsx — React Query provider
-'use client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState } from 'react';
-
-export function QueryProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 60 * 1000, // 1 minute
-            retry: 1,
-          },
-        },
-      }),
-  );
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  );
-}
-```
+Patterns for GraphQL operations and TanStack Query v5 data fetching.
 
 ---
 
 ## GraphQL Organization
 
-```
-src/
-├── graphql/
-│   ├── queries/
-│   │   ├── get-user.graphql
-│   │   └── list-posts.graphql
-│   ├── mutations/
-│   │   ├── create-post.graphql
-│   │   └── update-user.graphql
-│   └── fragments/
-│       └── user-fields.graphql
-```
+| Type      | Location                                  |
+| --------- | ----------------------------------------- |
+| Queries   | `src/graphql/queries/{name}.graphql`      |
+| Mutations | `src/graphql/mutations/{name}.graphql`    |
+| Fragments | `src/graphql/fragments/{name}.graphql`    |
+| Generated | `src/graphql/__generated__/`              |
 
-**Use GraphQL Code Generator** for typed operations — no manual typing:
+### Key Patterns
 
-```bash
-npm run codegen   # regenerate after changing .graphql files
-```
-
-`codegen.ts`:
-```typescript
-import type { CodegenConfig } from '@graphql-codegen/cli';
-
-const config: CodegenConfig = {
-  schema: 'http://localhost:3001/graphql',
-  documents: ['src/graphql/**/*.graphql'],
-  generates: {
-    'src/graphql/__generated__/': {
-      preset: 'client',
-      plugins: [],
-    },
-  },
-};
-export default config;
-```
+- Use GraphQL Code Generator for typed operations -- no manual typing
+- Fragment colocation: components define their own data requirements as fragments
+- Run `npm run codegen` after changing `.graphql` files
 
 ---
 
-## React Query Hooks
+## React Query (TanStack Query v5)
 
-All data fetching wrapped in custom hooks. Hooks live in `src/hooks/`.
+### Custom Hooks
 
-### Query hook pattern
+All data fetching must be wrapped in custom hooks:
 
 ```typescript
-// hooks/use-user.ts
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
-import { GetUserDocument } from '@/graphql/__generated__/graphql';
-
-export function useUser(userId: string) {
+// src/queries/users.ts
+export function useUserProfile(userId: string) {
   return useQuery({
     queryKey: ['users', userId],
-    queryFn: () => apiClient.request(GetUserDocument, { id: userId }),
-    enabled: !!userId,
+    queryFn: () => fetchUserProfile(userId),
   });
 }
-```
 
-### Mutation hook pattern
-
-```typescript
-// hooks/use-create-post.ts
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
-import { CreatePostDocument } from '@/graphql/__generated__/graphql';
-
-export function useCreatePost() {
+export function useUpdateUser() {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (input: CreatePostInput) =>
-      apiClient.request(CreatePostDocument, { input }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    mutationFn: updateUser,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['users', data.id] });
     },
   });
 }
 ```
 
----
+### Query Keys
 
-## Error Handling
-
-### Extracting GraphQL errors from ClientError
-
-`graphql-request` throws a `ClientError` when the server returns `{ errors: [...] }`. Extract the message so your UI can display something useful:
+Follow the `[scope, ...params]` convention:
 
 ```typescript
-import { ClientError } from 'graphql-request';
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof ClientError) {
-    return error.response.errors?.[0]?.message ?? 'Something went wrong';
-  }
-  if (error instanceof Error) return error.message;
-  return 'Unknown error';
-}
-```
-
-### Handling errors in hooks
-
-```typescript
-export function useCreatePost() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: CreatePostInput) =>
-      apiClient.request(CreatePostDocument, { input }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-    },
-    onError: (error) => {
-      // Log or show a toast — don't swallow silently
-      console.error('[useCreatePost]', getErrorMessage(error));
-    },
-  });
-}
-```
-
-### Error boundaries for query failures
-
-Wrap sections of the UI that might fail so one broken query doesn't crash the whole page:
-
-```typescript
-// app/[feature]/error.tsx — Next.js App Router error boundary
-'use client';
-
-export default function FeatureError({ error, reset }: { error: Error; reset: () => void }) {
-  return (
-    <div>
-      <p>{error.message}</p>
-      <button onClick={reset}>Try again</button>
-    </div>
-  );
-}
-```
-
-For finer-grained boundaries inside a page, use React's `<ErrorBoundary>` with a library like `react-error-boundary`:
-
-```typescript
-import { ErrorBoundary } from 'react-error-boundary';
-
-<ErrorBoundary fallback={<p>Failed to load comments</p>}>
-  <CommentList postId={postId} />
-</ErrorBoundary>
-```
-
----
-
-## Query Key Convention
-
-```typescript
-['users']                    // all users
-['users', userId]            // specific user
+['users']              // all users
+['users', userId]      // specific user
 ['users', userId, 'posts']  // user's posts
-['posts', { status: 'published' }]  // filtered list
 ```
 
----
+### Cache Configuration
 
-## Server-Side Prefetching (Next.js App Router)
+- Configure `staleTime` and `gcTime` appropriately
+- No infinite caching by default
+- Mutations use `onSuccess` for cache invalidation
 
-Prefetch in Server Components to avoid client-side loading states. The data is serialized into the HTML and hydrated on the client — the hook call hits the cache immediately.
+### Server-Side Prefetching
+
+Prefetch data in Server Components using `HydrationBoundary`:
 
 ```typescript
-// app/users/[id]/page.tsx
+// app/users/[id]/page.tsx (Server Component)
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
-import { GetUserDocument } from '@/graphql/__generated__/graphql';
 
 export default async function UserPage({ params }: { params: { id: string } }) {
   const queryClient = new QueryClient();
-
   await queryClient.prefetchQuery({
     queryKey: ['users', params.id],
-    queryFn: () => apiClient.request(GetUserDocument, { id: params.id }),
+    queryFn: () => fetchUserProfile(params.id),
   });
 
   return (
@@ -236,67 +84,8 @@ export default async function UserPage({ params }: { params: { id: string } }) {
     </HydrationBoundary>
   );
 }
-
-// components/features/user/UserProfile.tsx (Client Component)
-'use client';
-export function UserProfile({ userId }: { userId: string }) {
-  const { data, isLoading } = useUser(userId);
-  // data is already available from SSR — no loading flash on first render
-}
 ```
 
----
+### React Query Hooks Location
 
-## Optimistic Updates
-
-For instant UI feedback on mutations:
-
-```typescript
-export function useToggleLike(postId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (liked: boolean) =>
-      apiClient.request(ToggleLikeDocument, { postId, liked }),
-
-    onMutate: async (liked) => {
-      // Cancel in-flight queries so they don't overwrite the optimistic state
-      await queryClient.cancelQueries({ queryKey: ['posts', postId] });
-
-      // Snapshot current value for rollback
-      const previous = queryClient.getQueryData(['posts', postId]);
-
-      // Apply the optimistic update immediately
-      queryClient.setQueryData(['posts', postId], (old: Post) => ({
-        ...old,
-        liked,
-        likeCount: liked ? old.likeCount + 1 : old.likeCount - 1,
-      }));
-
-      return { previous };
-    },
-
-    onError: (_err, _liked, context) => {
-      // Roll back to the snapshot on failure
-      queryClient.setQueryData(['posts', postId], context?.previous);
-    },
-
-    onSettled: () => {
-      // Sync with server state regardless of outcome
-      queryClient.invalidateQueries({ queryKey: ['posts', postId] });
-    },
-  });
-}
-```
-
----
-
-## Rules
-
-- **All GQL operations in `.graphql` files** — never inline query strings in hooks
-- **Run codegen after schema changes** — always use generated types, never manual
-- **Hooks for all data fetching** — components stay presentational
-- **Query keys follow the `[scope, ...params]` convention** — enables precise invalidation
-- **`staleTime` on every query** — never leave it at 0 for production list queries
-- **Server prefetch for above-the-fold data** — avoids loading state on first render
-- **Always handle errors explicitly** — log them or surface them to the user; never swallow silently
+All query hooks live in `src/queries/{domain}.ts`.

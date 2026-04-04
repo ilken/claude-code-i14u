@@ -1,173 +1,146 @@
-# Chat & Real-time Messaging (React Native)
+# Chat Navigation & Messaging Screens
 
-Generic patterns for adding chat to a React Native / Expo app using Stream Chat (stream-chat-expo) or similar.
+## Chat Navigation Hooks
 
----
+### Key Principles
 
-## Stream Chat Setup
+- **MUST** use `useNavigatePrivateChatChannelOrRequestSafe` for private messaging
+- **MUST** use `useNavigateArtistChatChannel` for artist chat rooms
+- **MUST** use `useNavigateChatChannelSafe` for safe channel navigation with membership validation
+- **MUST** handle errors and loading states
+- **SHOULD** use appropriate navigation action (navigate vs push)
 
-```bash
-npx expo install stream-chat-expo stream-chat-react-native
-```
-
-```typescript
-// lib/chat-client.ts
-import { StreamChat } from 'stream-chat';
-
-export const chatClient = StreamChat.getInstance(process.env.EXPO_PUBLIC_STREAM_KEY!);
-
-// Connect user (call after authentication)
-export const connectChatUser = async (userId: string, token: string) => {
-  await chatClient.connectUser(
-    { id: userId, name: displayName, image: avatarUrl },
-    token, // generate server-side with chatClient.createToken(userId)
-  );
-};
-
-export const disconnectChatUser = () => chatClient.disconnectUser();
-```
-
----
-
-## Navigation Hooks Pattern
-
-Abstract all chat navigation behind custom hooks — never call `navigation.navigate` directly for chat screens in components.
+### Private Messaging
 
 ```typescript
-// hooks/chat/useNavigateToDM.hook.ts
-export const useNavigateToDM = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+const navigatePrivateChatChannelOrRequestSafe =
+  useNavigatePrivateChatChannelOrRequestSafe();
 
-  return useCallback(async (recipientId: string): Promise<void> => {
-    try {
-      // Get or create DM channel
-      const channel = chatClient.channel('messaging', {
-        members: [currentUserId, recipientId],
-      });
-      await channel.watch();
-
-      navigation.navigate('ChatChannel', { channelId: channel.id! });
-    } catch (error) {
-      console.error('Failed to navigate to DM', error);
-    }
-  }, [navigation]);
-};
+await navigatePrivateChatChannelOrRequestSafe({
+  receiverProfileId: profileId,
+  onRequestLimitReached: showPaywall,
+  onAgeRestricted: showAgeMismatchToast,
+  requestScreenParams: { name, picture, avatarColourMix },
+  onComplete: () => close(),
+});
 ```
+
+### Artist Chat
 
 ```typescript
-// Usage in a component
-const navigateToDM = useNavigateToDM();
+const navigateArtistChatChannel = useNavigateArtistChatChannel();
 
-<Button onPress={() => navigateToDM(user.id)} title="Message" />
+await navigateArtistChatChannel({
+  chatChannelExternalId: artist.chatChannelExternalId,
+  action: "push",
+  onError: error => logger.error("Failed to navigate:", error),
+});
 ```
 
----
-
-## Channel List Screen
+### Safe Channel Navigation
 
 ```typescript
-import { ChannelList, ChannelPreviewMessenger } from 'stream-chat-expo';
+const navigateChatChannelSafe = useNavigateChatChannelSafe();
 
-export const InboxScreen = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-
-  return (
-    <ChannelList
-      filters={{ members: { $in: [currentUserId] }, type: 'messaging' }}
-      sort={{ last_message_at: -1 }}
-      onSelect={(channel) => {
-        navigation.navigate('ChatChannel', { channelId: channel.id! });
-      }}
-      Preview={ChannelPreviewMessenger}
-    />
-  );
-};
+await navigateChatChannelSafe({
+  chatChannelExternalId: "channel-123",
+  onAborted: () => showJoinScreen(),
+  onError: error => logger.error("Navigation failed:", error),
+});
 ```
 
----
-
-## Chat Channel Screen
+### Tab Navigation
 
 ```typescript
-import { Channel, MessageList, MessageInput } from 'stream-chat-expo';
+const navigateChatChannelsMessages = useNavigateChatChannelsMessages();
+const navigateChatChannelsRequests = useNavigateChatChannelsRequests();
 
-export const ChatChannelScreen = ({ route }: ChatChannelScreenProps) => {
-  const { channelId } = route.params;
-  const [channel, setChannel] = useState<StreamChannel | null>(null);
-
-  useEffect(() => {
-    const ch = chatClient.channel('messaging', channelId);
-    ch.watch().then(() => setChannel(ch));
-  }, [channelId]);
-
-  if (!channel) return <ActivityIndicator />;
-
-  return (
-    <Channel channel={channel} keyboardVerticalOffset={...}>
-      <MessageList />
-      <MessageInput />
-    </Channel>
-  );
-};
+navigateChatChannelsMessages();
+navigateChatChannelsRequests();
 ```
 
----
-
-## Event Handling Patterns
-
-Listen to Stream events in a `useEffect`:
+### Error Handling
 
 ```typescript
-useEffect(() => {
-  const unsubscribe = chatClient.on('notification.message_new', (event) => {
-    // Update unread badge, show notification, etc.
-    updateUnreadCount(event.total_unread_count ?? 0);
-  });
-
-  return () => unsubscribe.unsubscribe();
-}, []);
+await navigatePrivateChatChannelOrRequestSafe({
+  receiverProfileId: profileId,
+  onError: error => logger.error("Navigation failed", { error }),
+  onRequestLimitReached: showPaywall,
+  onAgeRestricted: showAgeMismatchToast,
+});
 ```
 
-Common events:
-| Event | When it fires |
-|-------|--------------|
-| `message.new` | New message in a watched channel |
-| `notification.message_new` | New message in a non-watched channel |
-| `channel.hidden` | Channel was hidden (user "deleted" DM) |
-| `channel.deleted` | Channel was hard-deleted server-side |
-| `member.added` | User added to channel |
-
-**Important:** `channel.hidden` ≠ `channel.deleted`. "Delete chat" usually hides, not deletes.
-
----
-
-## Unread Counts
+### Loading States
 
 ```typescript
-// Show unread badge on tab bar
-const [unreadCount, setUnreadCount] = useState(0);
+const [isLoading, setIsLoading] = useState(false);
 
-useEffect(() => {
-  const handleEvent = (event: Event) => {
-    setUnreadCount(event.total_unread_count ?? 0);
-  };
-
-  chatClient.on('notification.mark_read', handleEvent);
-  chatClient.on('notification.message_new', handleEvent);
-
-  return () => {
-    chatClient.off('notification.mark_read', handleEvent);
-    chatClient.off('notification.message_new', handleEvent);
-  };
-}, []);
+const handlePress = useCallback(async () => {
+  try {
+    setIsLoading(true);
+    await navigatePrivateChatChannelOrRequestSafe({
+      receiverProfileId: profileId,
+      onRequestLimitReached: showPaywall,
+      onAgeRestricted: showAgeMismatchToast,
+      onComplete: () => {
+        close();
+        setIsLoading(false);
+      },
+    });
+  } finally {
+    setIsLoading(false);
+  }
+}, [profileId, showPaywall, showAgeMismatchToast, close]);
 ```
 
----
+## Channel Deletion / Leave Event Mapping
 
-## Rules
+When a user performs a chat action, the backend fires specific Stream events:
 
-- **Navigation hooks only** — never call `navigation.navigate('Chat...')` directly in components
-- **Error handling is required** — channel `watch()` can fail (offline, permission denied)
-- **Always `unsubscribe`** from event listeners in useEffect cleanup
-- **`channel.hidden` ≠ `channel.deleted`** — handle both events distinctly
-- **Server-side token generation** — never generate Stream tokens client-side
+| User action | Backend call | Stream event |
+|---|---|---|
+| Delete Chat (accepted DM) | `hideChannel()` | `channel.hidden` |
+| Decline request (pending DM) | `rejectChannelInvite()` | varies |
+| Leave chatroom | `hideChannel()` | `channel.hidden` |
+| Server-side channel deletion | Stream API delete | `channel.deleted` |
+
+**Important**: "Delete Chat" fires `channel.hidden`, NOT `channel.deleted`.
+
+## Anti-Patterns
+
+- Don't use `useNavigateArtistChatChannel` for private messaging
+- Don't ignore error handling callbacks
+- Don't use low-level hooks when high-level ones exist
+- Don't forget to handle `onComplete` callback for proper cleanup
+- Don't assume "Delete Chat" fires `channel.deleted` -- it fires `channel.hidden`
+
+## Messaging Screens Consistency
+
+### When This Applies
+
+When editing `ChannelList` event handlers (`onNewMessage`, `onChannelDeleted`, `onChannelHidden`, `onAddedToChannel`, etc.) in any of the three messaging screens.
+
+### The Three ChannelList Screens
+
+Changes to ChannelList event handlers **must** be applied to all three screens:
+
+1. **DirectMessages** -- `chat-tabs/messages/DirectMessages.screen.tsx`
+2. **Chatrooms** -- `chat-tabs/messages/Chatrooms.screen.tsx`
+3. **MessageRequests** -- `chat-tabs/message-requests/MessageRequests.screen.tsx`
+
+### Checklist
+
+- Handler type alias added/updated in `Chat.types.ts`
+- Handler callback added/updated in **DirectMessages.screen.tsx**
+- Handler callback added/updated in **Chatrooms.screen.tsx**
+- Handler callback added/updated in **MessageRequests.screen.tsx**
+- Props wired on `<ChannelList />` in all three screens
+- JSDoc comments updated in all three screens
+
+### Key Differences Between Screens
+
+- **DirectMessages**: Uses `isDirectMessageChannel` guard, checks `member.status !== "pending"`
+- **Chatrooms**: Uses `isArtistChannel` guard, no membership status check
+- **MessageRequests**: Uses `isDirectMessageChannel` guard, checks `member.status === "pending"` (inverse of DirectMessages)
+
+"Remove" handlers (e.g. `onChannelDeleted`, `onChannelHidden`) are typically identical across all three screens.

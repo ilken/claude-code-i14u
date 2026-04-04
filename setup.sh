@@ -2,17 +2,17 @@
 # setup.sh — One-command setup for Claude Code with Solo & Team modes
 #
 # What this script does:
-#   1.  Installs Homebrew (if missing)
-#   2.  Checks for Claude Code (prompts to install if missing)
-#   3.  Merges Claude Code settings into ~/.claude/settings.json
-#   4.  Installs global npm tools: uipro-cli, playwright
-#   5.  Configures Context7 MCP server
-#   6.  Configures Shadcn MCP server
-#   7.  Configures Iconify MCP server
-#   8.  Configures 21st.dev MCP server (prompts for API key)
-#   9.  Sets up iTerm2 profiles for claude-solo and claude-team
-#  10.  Symlinks claude-solo, claude-team, and claude-lead to /usr/local/bin
-#  11.  Symlinks CLAUDE.md orchestrator to ~/.claude/CLAUDE.md
+#   1. Installs Homebrew (if missing)
+#   2. Installs iTerm2 and tmux via Homebrew
+#   3. Checks for Claude Code (prompts to install if missing)
+#   4. Merges Claude Code settings into ~/.claude/settings.json
+#   5. Adds the Linear MCP server
+#   6. Installs the /linear custom slash command
+#   7. Installs tmux config optimized for Claude Team mode
+#   8. Installs the iTerm2 "Claude Team" dynamic profile (Ctrl+Cmd+L)
+#   9. Symlinks claude-solo, claude-team, and claude-lead to /usr/local/bin
+#  10. (reserved)
+#  11. Symlinks CLAUDE.md orchestrator to ~/Documents/GitHub/
 #
 # Usage:
 #   chmod +x setup.sh && ./setup.sh
@@ -25,7 +25,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 BOLD='\033[1m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
 info()    { echo -e "${BLUE}[INFO]${NC}  $*"; }
 success() { echo -e "${GREEN}[OK]${NC}    $*"; }
@@ -42,11 +42,11 @@ fi
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║     Claude Code i14u — Setup Script              ║${NC}"
+echo -e "${BOLD}║     Claude Code Config — Setup Script            ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# ─── Step 1: Homebrew ────────────────────────────────────────────────────────
+# ─── Step 1: Homebrew ─────────────────────────────────────────────────────────
 
 info "Checking for Homebrew..."
 if command -v brew &>/dev/null; then
@@ -54,13 +54,36 @@ if command -v brew &>/dev/null; then
 else
   info "Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  # Add brew to PATH for Apple Silicon
   if [[ -f /opt/homebrew/bin/brew ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
   success "Homebrew installed."
 fi
 
-# ─── Step 2: Claude Code ─────────────────────────────────────────────────────
+# ─── Step 2: iTerm2 ──────────────────────────────────────────────────────────
+
+info "Checking for iTerm2..."
+if brew list --cask iterm2 &>/dev/null 2>&1 || [[ -d "/Applications/iTerm.app" ]]; then
+  success "iTerm2 is already installed."
+else
+  info "Installing iTerm2..."
+  brew install --cask iterm2
+  success "iTerm2 installed."
+fi
+
+# ─── Step 3: tmux ────────────────────────────────────────────────────────────
+
+info "Checking for tmux..."
+if command -v tmux &>/dev/null; then
+  success "tmux is already installed."
+else
+  info "Installing tmux..."
+  brew install tmux
+  success "tmux installed."
+fi
+
+# ─── Step 4: Claude Code ─────────────────────────────────────────────────────
 
 info "Checking for Claude Code..."
 if command -v claude &>/dev/null; then
@@ -85,7 +108,7 @@ else
   fi
 fi
 
-# ─── Step 3: Claude Code settings ────────────────────────────────────────────
+# ─── Step 5: Claude Code settings ────────────────────────────────────────────
 
 info "Configuring Claude Code settings..."
 
@@ -94,121 +117,104 @@ CLAUDE_SETTINGS="$CLAUDE_DIR/settings.json"
 
 mkdir -p "$CLAUDE_DIR"
 
-# Ensure jq is available
-if ! command -v jq &>/dev/null; then
-  info "Installing jq..."
-  brew install jq
-fi
-
 if [[ -f "$CLAUDE_SETTINGS" ]]; then
   info "Existing settings found. Merging..."
-  jq -s '
-    def dedup: unique;
-    .[0] as $existing | .[1] as $new |
-    ($existing // {}) * ($new // {}) |
-    .permissions.allow = (($existing.permissions.allow // []) + ($new.permissions.allow // []) | dedup) |
-    .permissions.deny = (($existing.permissions.deny // []) + ($new.permissions.deny // []) | dedup)
-  ' "$CLAUDE_SETTINGS" "$SCRIPT_DIR/config/claude-settings.json" > "${CLAUDE_SETTINGS}.tmp"
-  mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
-  success "Settings merged (existing settings preserved)."
+  # Use a temp file to merge settings with jq if available, otherwise replace
+  if command -v jq &>/dev/null; then
+    # Deep merge: existing settings + our settings (ours take precedence for new keys,
+    # arrays are concatenated and deduplicated)
+    jq -s '
+      def dedup: unique;
+      .[0] as $existing | .[1] as $new |
+      ($existing // {}) * ($new // {}) |
+      .permissions.allow = (($existing.permissions.allow // []) + ($new.permissions.allow // []) | dedup) |
+      .permissions.deny = (($existing.permissions.deny // []) + ($new.permissions.deny // []) | dedup)
+    ' "$CLAUDE_SETTINGS" "$SCRIPT_DIR/config/claude-settings.json" > "${CLAUDE_SETTINGS}.tmp"
+    mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
+    success "Settings merged (existing settings preserved)."
+  else
+    warn "jq not found — installing jq for settings merge..."
+    brew install jq
+    jq -s '
+      def dedup: unique;
+      .[0] as $existing | .[1] as $new |
+      ($existing // {}) * ($new // {}) |
+      .permissions.allow = (($existing.permissions.allow // []) + ($new.permissions.allow // []) | dedup) |
+      .permissions.deny = (($existing.permissions.deny // []) + ($new.permissions.deny // []) | dedup)
+    ' "$CLAUDE_SETTINGS" "$SCRIPT_DIR/config/claude-settings.json" > "${CLAUDE_SETTINGS}.tmp"
+    mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
+    success "Settings merged (existing settings preserved)."
+  fi
 else
   cp "$SCRIPT_DIR/config/claude-settings.json" "$CLAUDE_SETTINGS"
   success "Settings installed."
 fi
 
-# ─── Step 4: Global npm tools ────────────────────────────────────────────────
+# ─── Step 6: Linear MCP server ───────────────────────────────────────────────
 
-info "Installing global npm tools..."
-
-if command -v npm &>/dev/null; then
-  # UI UX Pro Max CLI — keeps the design skill up to date
-  if ! command -v uipro &>/dev/null; then
-    npm install -g uipro-cli
-    success "uipro-cli installed."
-  else
-    success "uipro-cli already installed."
-  fi
-
-  # Playwright — global CLI for E2E testing and UI debugging
-  if ! command -v playwright &>/dev/null; then
-    npm install -g playwright
-    npx playwright install chromium --with-deps 2>/dev/null || true
-    success "Playwright installed."
-  else
-    success "Playwright already installed."
-  fi
+info "Configuring Linear MCP server..."
+if command -v claude &>/dev/null; then
+  # Add the Linear MCP server (idempotent — overwrites if exists)
+  claude mcp add-json linear '{"command":"npx","args":["-y","mcp-remote","https://mcp.linear.app/sse"]}' 2>/dev/null || true
+  success "Linear MCP server configured."
+  echo -e "  ${YELLOW}Note:${NC} On first use, run ${BOLD}/mcp${NC} inside Claude to authenticate with Linear."
 else
-  warn "npm not found — skipping global tool installs. Install Node.js >= 18 first."
+  warn "Claude Code not installed — skipping Linear MCP setup."
+  echo "  Run this after installing Claude Code:"
+  echo "  claude mcp add-json linear '{\"command\":\"npx\",\"args\":[\"-y\",\"mcp-remote\",\"https://mcp.linear.app/sse\"]}'"
 fi
 
-# ─── Step 5: Context7 MCP server ─────────────────────────────────────────────
+# ─── Step 6b: Context7 MCP server ─────────────────────────────────────────────
 
 info "Configuring Context7 MCP server..."
 if command -v claude &>/dev/null; then
   claude mcp add-json context7 '{"command":"npx","args":["-y","@upstash/context7-mcp"]}' 2>/dev/null || true
-  success "Context7 MCP configured."
+  success "Context7 MCP server configured."
 else
-  warn "Claude Code not installed — skipping MCP setup."
+  warn "Claude Code not installed — skipping Context7 MCP setup."
+  echo "  Run this after installing Claude Code:"
+  echo "  claude mcp add-json context7 '{\"command\":\"npx\",\"args\":[\"-y\",\"@upstash/context7-mcp\"]}'"
 fi
 
-# ─── Step 6: Shadcn MCP server ───────────────────────────────────────────────
+# ─── Step 7: Custom /linear slash command ─────────────────────────────────────
 
-info "Configuring Shadcn MCP server..."
-if command -v claude &>/dev/null; then
-  claude mcp add-json shadcn '{"command":"npx","args":["shadcn@latest","mcp"]}' 2>/dev/null || true
-  success "Shadcn MCP configured."
-fi
+info "Installing /linear slash command..."
 
-# ─── Step 7: Iconify MCP server ──────────────────────────────────────────────
+CLAUDE_COMMANDS_DIR="$CLAUDE_DIR/commands"
+mkdir -p "$CLAUDE_COMMANDS_DIR"
+cp "$SCRIPT_DIR/commands/linear.md" "$CLAUDE_COMMANDS_DIR/linear.md"
+success "/linear command installed to $CLAUDE_COMMANDS_DIR/linear.md"
 
-info "Configuring Iconify MCP server..."
-if command -v claude &>/dev/null; then
-  claude mcp add-json iconify '{"command":"npx","args":["-y","@osmansiddiquer/iconify-mcp"]}' 2>/dev/null || true
-  success "Iconify MCP configured."
-fi
+# ─── Step 8: tmux config ──────────────────────────────────────────────────────
 
-# ─── Step 8: 21st.dev MCP server ─────────────────────────────────────────────
+info "Installing tmux config for Claude Team mode..."
 
-info "Configuring 21st.dev MCP server (UI component inspiration)..."
-echo ""
-echo -e "  ${YELLOW}21st.dev requires an API key.${NC}"
-echo -e "  Get yours at: https://21st.dev"
-echo ""
-read -p "  Enter your 21st.dev API key (leave blank to skip): " TWENTYFIRST_KEY
-echo ""
-if [[ -n "$TWENTYFIRST_KEY" ]] && command -v claude &>/dev/null; then
-  claude mcp add-json 21st-dev \
-    "{\"command\":\"npx\",\"args\":[\"-y\",\"@21st-dev/mcp@latest\"],\"env\":{\"API_KEY\":\"${TWENTYFIRST_KEY}\"}}" \
-    2>/dev/null || true
-  success "21st.dev MCP configured."
-  echo -e "  ${YELLOW}Note:${NC} API key is stored in your Claude MCP config, not in this repo."
-elif [[ -z "$TWENTYFIRST_KEY" ]]; then
-  warn "Skipping 21st.dev MCP — no API key provided."
-  echo "  To add later: claude mcp add-json 21st-dev '{\"command\":\"npx\",\"args\":[\"-y\",\"@21st-dev/mcp@latest\"],\"env\":{\"API_KEY\":\"YOUR_KEY\"}}'"
-fi
+TMUX_CONF="$HOME/.tmux.conf"
 
-# ─── Step 9: iTerm2 profile setup ────────────────────────────────────────────
-
-info "Setting up iTerm2 profiles..."
-
-ITERM_PREFS_DIR="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
-
-if [[ -d "/Applications/iTerm.app" ]] || [[ -d "/Applications/iTerm2.app" ]]; then
-  mkdir -p "$ITERM_PREFS_DIR"
-  cp "$SCRIPT_DIR/config/iterm2-profiles.json" "$ITERM_PREFS_DIR/claude-code-profiles.json"
-  success "iTerm2 profiles installed (claude-solo + claude-team)."
-  echo ""
-  echo -e "  Profiles available in iTerm2 > Profiles:"
-  echo -e "    ${GREEN}Claude Solo${NC}   — Solo Dev mode"
-  echo -e "    ${GREEN}Claude Team${NC}   — Team Lead mode (multi-agent)"
-  echo -e "  Hotkeys:"
-  echo -e "    ${GREEN}Ctrl+Cmd+S${NC}    Open Claude Solo window"
-  echo -e "    ${GREEN}Ctrl+Cmd+T${NC}    Open Claude Team window"
-  echo ""
+if [[ -f "$TMUX_CONF" ]]; then
+  # Check if our config is already present
+  if grep -q "Claude Code Team Mode" "$TMUX_CONF" 2>/dev/null; then
+    success "tmux config already installed."
+  else
+    info "Existing ~/.tmux.conf found. Appending Claude settings..."
+    echo "" >> "$TMUX_CONF"
+    echo "# ─── Added by claude-code-config setup ─────────────────────────────────" >> "$TMUX_CONF"
+    cat "$SCRIPT_DIR/config/tmux.conf" >> "$TMUX_CONF"
+    success "tmux settings appended to existing ~/.tmux.conf"
+  fi
 else
-  warn "iTerm2 not found at /Applications/iTerm.app — skipping profile install."
-  echo "  Install iTerm2 from https://iterm2.com, then re-run setup.sh"
+  cp "$SCRIPT_DIR/config/tmux.conf" "$TMUX_CONF"
+  success "tmux config installed to ~/.tmux.conf"
 fi
+
+# ─── Step 9: iTerm2 dynamic profile ──────────────────────────────────────────
+
+info "Installing iTerm2 'Claude Team' profile..."
+
+ITERM_DYNAMIC_DIR="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+mkdir -p "$ITERM_DYNAMIC_DIR"
+cp "$SCRIPT_DIR/config/iterm2-team-profile.json" "$ITERM_DYNAMIC_DIR/claude-team.json"
+success "iTerm2 profile installed. Shortcut: Ctrl+Cmd+L"
 
 # ─── Step 10: Symlink bin scripts ────────────────────────────────────────────
 
@@ -220,6 +226,7 @@ if [[ ! -d "$BIN_TARGET" ]]; then
   sudo mkdir -p "$BIN_TARGET"
 fi
 
+# Remove old symlinks if they exist
 [[ -L "$BIN_TARGET/claude-solo" ]] && sudo rm "$BIN_TARGET/claude-solo"
 [[ -L "$BIN_TARGET/claude-team" ]] && sudo rm "$BIN_TARGET/claude-team"
 [[ -L "$BIN_TARGET/claude-lead" ]] && sudo rm "$BIN_TARGET/claude-lead"
@@ -227,20 +234,24 @@ fi
 sudo ln -sf "$SCRIPT_DIR/bin/claude-solo" "$BIN_TARGET/claude-solo"
 sudo ln -sf "$SCRIPT_DIR/bin/claude-team" "$BIN_TARGET/claude-team"
 sudo ln -sf "$SCRIPT_DIR/bin/claude-lead" "$BIN_TARGET/claude-lead"
-success "Commands installed: claude-solo, claude-team, claude-lead"
+success "Commands installed:"
+echo "    claude-solo  → Solo Dev Mode"
+echo "    claude-team  → Team Lead Mode"
+echo "    claude-lead  → Project Lead Mode"
 
 # ─── Step 11: Deploy orchestrator CLAUDE.md ──────────────────────────────────
 
 info "Deploying orchestrator CLAUDE.md..."
 
+GITHUB_DIR="$HOME/Documents/GitHub"
 ORCHESTRATOR_SOURCE="$SCRIPT_DIR/CLAUDE.md"
-GLOBAL_TARGET="$HOME/.claude/CLAUDE.md"
+ORCHESTRATOR_TARGET="$GITHUB_DIR/CLAUDE.md"
 
 if [[ -f "$ORCHESTRATOR_SOURCE" ]]; then
-  ln -sf "$ORCHESTRATOR_SOURCE" "$GLOBAL_TARGET"
-  success "CLAUDE.md symlinked: $GLOBAL_TARGET → $ORCHESTRATOR_SOURCE"
+  ln -sf "$ORCHESTRATOR_SOURCE" "$ORCHESTRATOR_TARGET"
+  success "CLAUDE.md symlinked: $ORCHESTRATOR_TARGET → $ORCHESTRATOR_SOURCE"
 else
-  warn "CLAUDE.md not found at $ORCHESTRATOR_SOURCE — skipping."
+  warn "CLAUDE.md not found at $ORCHESTRATOR_SOURCE — skipping symlink."
 fi
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
@@ -253,12 +264,13 @@ echo ""
 echo -e "  ${BOLD}Usage:${NC}"
 echo ""
 echo -e "  ${GREEN}claude-solo${NC}            Start Claude in Solo Dev mode"
-echo -e "  ${GREEN}claude-team${NC}            Start Claude in Team Lead mode (multi-agent)"
+echo -e "  ${GREEN}claude-team${NC}            Start Claude in Team Lead mode"
 echo -e "  ${GREEN}claude-lead${NC}            Start Claude in Project Lead mode"
-echo -e "  ${GREEN}Ctrl+Cmd+S${NC}             Open iTerm2 Claude Solo window"
-echo -e "  ${GREEN}Ctrl+Cmd+T${NC}             Open iTerm2 Claude Team window"
+echo -e "  ${GREEN}Ctrl+Cmd+L${NC}             Open iTerm2 Claude Team window"
+echo -e "  ${GREEN}/linear TICKET${NC}         Read a Linear ticket and plan (inside Claude)"
 echo ""
-echo -e "  ${BOLD}Design System:${NC}"
-echo -e "  Run ${GREEN}uipro init --ai claude${NC} in any project to install/update the UI skill"
-echo -e "  Templates for BRAND-VOICE, DESIGN-TOKENS, MOTION-SPEC in skills/shared/templates/"
+echo -e "  ${BOLD}First-time Linear setup:${NC}"
+echo -e "  1. Open Claude: ${GREEN}claude-solo${NC}"
+echo -e "  2. Run ${GREEN}/mcp${NC} to authenticate with Linear"
+echo -e "  3. Then use ${GREEN}/linear LIN-123${NC} to read any ticket"
 echo ""

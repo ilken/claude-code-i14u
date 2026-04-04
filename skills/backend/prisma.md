@@ -1,235 +1,256 @@
-# Prisma Best Practices (NestJS)
+# Prisma Best Practices & Migrations
 
----
+## Model Structure
 
-## Module Setup
+Custom models extend `PrismaCustomModel`:
 
 ```typescript
-// prisma/prisma.service.ts
+import { PrismaCustomModel } from 'global/prisma/models/prisma-custom.model';
+
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  async onModuleInit() {
-    await this.$connect();
-  }
-  async onModuleDestroy() {
-    await this.$disconnect();
+export class MyModel extends PrismaCustomModel {
+  constructor(private readonly table: PrismaService['tableName']) {
+    super();
   }
 }
+```
 
-// prisma/prisma.module.ts
-@Global()
+## Module Registration
+
+```typescript
 @Module({
-  providers: [PrismaService],
-  exports: [PrismaService],
+  providers: [
+    ...PrismaUtils.createInjectablePrismaCustomModel({
+      provide: MyModel,
+      callback: (prisma) => new MyModel(prisma.tableName),
+    }),
+    MyService,
+  ],
 })
-export class PrismaModule {}
+export class MyModule {}
 ```
-
-Mark as `@Global()` so every module that imports `PrismaModule` once (in `AppModule`) gets `PrismaService` without re-importing.
-
----
-
-## Service Pattern
-
-Keep Prisma calls inside services — never in resolvers or controllers. The service is the only place that knows about the database shape.
-
-```typescript
-@Injectable()
-export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  async findById(id: number): Promise<User> {
-    return this.prisma.user.findUniqueOrThrow({ where: { id } });
-  }
-
-  async create(data: CreateUserDto): Promise<User> {
-    return this.prisma.user.create({ data });
-  }
-
-  async update(id: number, data: UpdateUserDto): Promise<User> {
-    return this.prisma.user.update({ where: { id }, data });
-  }
-}
-```
-
----
-
-## Single findMany Pattern
-
-A single `findMany` with an optional args object is more maintainable than multiple specialized finders. Adding a new filter is a one-line change instead of a new method.
-
-```typescript
-export type FindManyUsersArgs = {
-  roleId?: number;
-  isActive?: boolean;
-  skip?: number;
-  take?: number;
-};
-
-async findMany(args: FindManyUsersArgs = {}): Promise<User[]> {
-  return this.prisma.user.findMany({
-    where: {
-      ...(args.roleId    !== undefined && { roleId: args.roleId }),
-      ...(args.isActive  !== undefined && { isActive: args.isActive }),
-    },
-    ...(args.skip !== undefined && { skip: args.skip }),
-    ...(args.take !== undefined && { take: args.take }),
-    orderBy: { createdAt: 'desc' },
-  });
-}
-```
-
----
 
 ## Error Handling
 
-Catch Prisma errors at the service boundary and convert to domain/HTTP exceptions.
-
 ```typescript
-import { Prisma } from '@prisma/client';
-
-async create(data: CreateUserDto): Promise<User> {
+public async create(data: any) {
   try {
-    return await this.prisma.user.create({ data });
+    return await this.table.create({ data });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') throw new ConflictException('Email already exists');
-      if (error.code === 'P2025') throw new NotFoundException('Record not found');
-    }
+    this.handlePrismaError(error);
     throw error;
   }
 }
 ```
 
-Common codes: `P2002` unique violation, `P2025` not found, `P2003` foreign key violation.
+## Query Methods
 
----
-
-## Transactions
-
-Use `$transaction` when multiple writes must succeed or fail together.
+Models should expose a single `findMany` method with optional filter parameters instead of multiple specialised finders. Define a single args type with all optional where-clause fields:
 
 ```typescript
-async transferCredits(fromId: number, toId: number, amount: number) {
-  return this.prisma.$transaction(async (tx) => {
-    const from = await tx.account.update({
-      where: { id: fromId },
-      data: { balance: { decrement: amount } },
-    });
+// Args type in module .types.ts
+export type FindManyMyEntityArgs = {
+  profileId?: number;
+  chatChannelId?: number;
+  roles?: MyRole[];
+  hasRole?: boolean;
+};
 
-    if (from.balance < 0) throw new BadRequestException('Insufficient balance');
-
-    return tx.account.update({
-      where: { id: toId },
-      data: { balance: { increment: amount } },
-    });
+// Single findMany in model
+public async findMany(args: FindManyMyEntityArgs): Promise<MyEntity[]> {
+  const records = await this.table.findMany({
+    where: {
+      ...(args.profileId !== undefined ? { profileId: args.profileId } : {}),
+      ...(args.chatChannelId !== undefined ? { chatRoomId: args.chatChannelId } : {}),
+      ...(args.roles !== undefined ? { role: { in: args.roles } } : {}),
+      ...(args.hasRole === true ? { role: { not: null } } : {}),
+    },
   });
+  return records.map((r) => this.buildEntity(r));
 }
 ```
 
----
-
-## Type Safety
-
-Use Prisma-generated input types instead of writing them manually.
+## Common Operations
 
 ```typescript
-import { Prisma } from '@prisma/client';
-
-type CreateInput = Prisma.UserCreateInput;
-type UpdateInput = Prisma.UserUpdateInput;
-```
-
----
-
-## Raw Queries — Escape Hatch
-
-For JOINs, aggregates, or complex GROUP BY that Prisma can't express cleanly:
-
-```typescript
-// $queryRaw for SELECT
-const results = await this.prisma.$queryRaw<{ id: number; count: bigint }[]>`
-  SELECT u.id, COUNT(p.id) as count
-  FROM "User" u
-  LEFT JOIN "Post" p ON p."userId" = u.id
-  WHERE u."isActive" = true
-  GROUP BY u.id
-`;
-
-// $executeRaw for INSERT/UPDATE/DELETE
-await this.prisma.$executeRaw`
-  UPDATE "User" SET "lastSeenAt" = NOW() WHERE id = ${userId}
-`;
-```
-
-Use tagged template literals (not string interpolation) — Prisma handles parameterisation automatically, preventing SQL injection.
-
----
-
-## Migrations
-
-```bash
-# Dev: create migration from schema diff
-npx prisma migrate dev --name add_user_roles
-
-# Production: apply pending migrations
-npx prisma migrate deploy
-
-# Regenerate client after schema changes
-npx prisma generate
-
-# Open Prisma Studio
-npx prisma studio
-```
-
-**Rules:**
-- `migrate dev` locally, `migrate deploy` in CI/production
-- Never edit migration files after they've been committed
-- Always run `prisma generate` after schema changes — otherwise the TS types lag behind
-- Never use `db push` in production (skips migration history)
-
----
-
-## Seeding
-
-```typescript
-// prisma/seed.ts
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-async function main() {
-  await prisma.role.upsert({
-    where: { name: 'admin' },
-    update: {},
-    create: { name: 'admin', description: 'Administrator' },
-  });
+// Find
+public async findById(id: number): Promise<Entity> {
+  const record = await this.table.findUniqueOrThrow({ where: { id } });
+  return new Entity(record);
 }
 
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+// Create
+public async create(data: CreateInput): Promise<Entity> {
+  const record = await this.table.create({ data });
+  return new Entity(record);
+}
+
+// Update
+public async update(id: number, data: UpdateInput): Promise<Entity> {
+  const record = await this.table.update({ where: { id }, data });
+  return new Entity(record);
+}
 ```
 
-```json
-// package.json
-{
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+## Complex Queries -- QueryBuilderSql + pgPool
+
+For queries involving JOINs, GROUP BY, aggregates, or raw SQL, use `QueryBuilderSql` with `this.pgPool` instead of `Prisma.sql` or `this.prisma.$queryRaw`.
+
+- `QueryBuilderSql` generates parameterized `QueryConfig` objects via `.toPgQuery()`
+- `this.pgPool` is available on all `PrismaCustomModel` subclasses
+- Each query method should have a single purpose (separate `findMany` from `count`)
+- Orchestration (`Promise.all`) belongs in the service, not the model
+
+```typescript
+import { QueryBuilderSql } from 'global/prisma/sql-query-builder/query-builder.sql';
+
+// BAD -- raw Prisma.sql baked into pgPool
+const result = await this.pgPool.query(Prisma.sql`
+  SELECT ... FROM "Table" WHERE id IN (${Prisma.join(ids)})
+`);
+
+// GOOD -- QueryBuilderSql
+const query = QueryBuilderSql.table('Table', 't')
+  .selectRaw({ sql: 't.id', alias: 'id' })
+  .whereIn('t.id', ids);
+const result = await this.pgPool.query<RecordType>(query.toPgQuery());
+```
+
+Full example:
+
+```typescript
+public async complexQuery(args: ComplexQueryArgs): Promise<MyEntity[]> {
+  const query = QueryBuilderSql.table('TableName', 't')
+    .selectRaw(
+      { sql: 't.id', alias: 'id' },
+      { sql: 't.name', alias: 'name' },
+    )
+    .join('RelatedTable', 'rt', 'rt."tableId"', '=', 't.id')
+    .whereIn('t."profileId"', args.profileIds)
+    .groupBy('t.id')
+    .orderByRaw('MAX(rt."createdAt") DESC')
+    .offset(args.skip)
+    .limit(args.take);
+
+  const result = await this.pgPool.query<RecordType>(query.toPgQuery());
+  return this.buildEntity(result.rows);
+}
+```
+
+## Service Integration
+
+```typescript
+@Injectable()
+export class MyService {
+  constructor(private readonly myModel: MyModel) {}
+
+  public async businessLogic(): Promise<Entity[]> {
+    return await this.myModel.findMany({ where: { active: true } });
   }
 }
 ```
 
-```bash
-npx prisma db seed
+## Type Safety
+
+```typescript
+import { Prisma } from '@prisma-generated/client';
+type CreateInput = Prisma.TableNameCreateInput;
+type UpdateInput = Prisma.TableNameUpdateInput;
+type WhereInput = Prisma.TableNameWhereInput;
 ```
 
----
+## Available Methods on PrismaCustomModel
 
-## Anti-Patterns
+- `this.prisma` -- PrismaService access
+- `this.configuration` -- ConfigurationService access
+- `this.handlePrismaError(error)` -- Error handling
+- `this.isUniqueConstraintError(error, fields)` -- Constraint validation
+- `this.isPrismaNotFoundError(error)` -- Not found detection
 
-- **Prisma calls in resolvers/controllers** — always go through a service
-- **`findUnique` without null check** — use `findUniqueOrThrow` or check explicitly
-- **Unbounded queries** — always add `take` for user-facing list queries
-- **String interpolation in raw queries** — use tagged template literals for safety
-- **`db push` in production** — always use `migrate deploy`
+## Model Migration Pattern (implements -> extends)
+
+When migrating older models:
+
+```typescript
+// Before
+import { PrismaCustomModelType } from 'global/prisma/prisma.types';
+export class MyModel implements PrismaCustomModelType {
+  constructor(public readonly table: PrismaService['tableName']) {}
+}
+
+// After
+import { PrismaCustomModel } from 'global/prisma/models/prisma-custom.model';
+export class MyModel extends PrismaCustomModel {
+  constructor(private readonly table: PrismaService['tableName']) {
+    super();
+  }
+}
+```
+
+Key changes:
+1. Import: `PrismaCustomModelType` -> `PrismaCustomModel`
+2. Declaration: `implements` -> `extends`
+3. Constructor: `public readonly` -> `private readonly` + `super()`
+4. Injection: `createInjectableCustomModel()` -> `createInjectablePrismaCustomModel()`
+
+Module registration migration:
+
+```typescript
+// Old
+PrismaUtils.createInjectableCustomModel(MyModel, (prisma) => new MyModel(prisma.table));
+
+// New
+...PrismaUtils.createInjectablePrismaCustomModel({
+  provide: MyModel,
+  callback: (prisma) => new MyModel(prisma.table),
+}),
+```
+
+## Database Migrations
+
+The project uses PostgreSQL. Migrations MUST be created manually because `yarn db:migrate:local dev` requires the application and database to be running.
+
+### Step 1: Update the Prisma Schema
+
+Edit the relevant model file in `prisma/models/` to add, remove, or modify columns.
+
+### Step 2: Create the Migration
+
+Generate a UTC timestamp and create the migration directory with a SQL file:
+
+```bash
+# Generate timestamp
+date -u +%Y%m%d%H%M%S
+
+# Create the migration
+mkdir -p prisma/migrations/{timestamp}_{snake_case_description}
+```
+
+Write PostgreSQL-compatible SQL in `prisma/migrations/{timestamp}_{snake_case_description}/migration.sql`:
+
+```sql
+-- AlterTable
+ALTER TABLE "TableName" ADD COLUMN "columnName" BOOLEAN NOT NULL DEFAULT false;
+```
+
+Use PostgreSQL-specific syntax when needed (e.g., `CREATE INDEX CONCURRENTLY`, `DO $$ ... $$` blocks, GIN/GiST indexes).
+
+### Step 3: Regenerate Prisma Client Types
+
+```bash
+yarn db:generate
+```
+
+### Step 4: Verify
+
+```bash
+yarn code:tsc
+```
+
+### Constraints
+
+- MUST NOT use `yarn db:migrate:local dev` (requires app to be running)
+- MUST create the migration SQL file manually
+- MUST use a UTC timestamp for the migration directory name
+- MUST run `yarn db:generate` after schema changes
+- MUST verify compilation with `yarn code:tsc`
