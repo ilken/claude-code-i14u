@@ -13,6 +13,7 @@
 #   9.  Sets up iTerm2 profiles for claude-solo and claude-team
 #  10.  Symlinks claude-solo, claude-team, and claude-lead to /usr/local/bin
 #  11.  Symlinks CLAUDE.md orchestrator to ~/.claude/CLAUDE.md
+#  12.  Installs global commands (startup:, project:) to ~/.claude/commands/
 #
 # Usage:
 #   chmod +x setup.sh && ./setup.sh
@@ -242,6 +243,30 @@ if [[ -f "$ORCHESTRATOR_SOURCE" ]]; then
 else
   warn "CLAUDE.md not found at $ORCHESTRATOR_SOURCE — skipping."
 fi
+
+# ─── Step 12: Install global commands ───────────────────────────────────────
+
+info "Installing global Claude commands (~/.claude/commands/)..."
+
+GLOBAL_COMMANDS_DIR="$HOME/.claude/commands"
+LOCAL_COMMANDS_DIR="$SCRIPT_DIR/.claude/commands"
+
+mkdir -p "$GLOBAL_COMMANDS_DIR"
+
+# Copy each subdirectory (namespaced commands like startup:, project:)
+for dir in "$LOCAL_COMMANDS_DIR"/*/; do
+  namespace=$(basename "$dir")
+  mkdir -p "$GLOBAL_COMMANDS_DIR/$namespace"
+  cp "$dir"*.md "$GLOBAL_COMMANDS_DIR/$namespace/" 2>/dev/null || true
+  success "Commands installed: $namespace:"
+done
+
+# Copy any top-level .md command files
+for file in "$LOCAL_COMMANDS_DIR"/*.md; do
+  [[ -f "$file" ]] || continue
+  cp "$file" "$GLOBAL_COMMANDS_DIR/"
+  success "Command installed: $(basename "$file")"
+done
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
 
