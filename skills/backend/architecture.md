@@ -1,221 +1,150 @@
-# Architecture & Coding Standards
+# NestJS Backend Architecture
 
-## Technology Stack
+Generic NestJS architecture following clean folder/file naming conventions. Project-specific knowledge belongs in the project's own `.claude/CLAUDE.md`.
 
-- Language: Node.js, TypeScript
-- Framework: NestJS
-- Database: PostgreSQL via Prisma
-- Cache/Queue: Redis, Bull/BullMQ
-- Storage: AWS S3
+---
 
-## Module Organization
-
-### Domain Modules
-
-Location: `src/` (root path). Encapsulate business logic.
+## Folder Structure
 
 ```
 src/
-├── domain-module/
-│   ├── domain-module.module.ts
-│   ├── domain-module.service.ts
-│   ├── domain-module.types.ts
-│   ├── sub-module/
-│   │   ├── sub-module.module.ts
-│   │   └── sub-module.service.ts
+├── core/              # App-wide infrastructure (auth, redis, logger, database)
+├── common/            # Generic reusable utilities (pipes, decorators, types, guards)
+├── integrations/      # External/internal service wrappers (stripe, aws, third-party APIs)
+├── modules/           # Domain-driven business feature modules
+├── events/            # Event publishers and listeners
+├── commands/          # CLI jobs, cron logic, one-off scripts
+├── app.module.ts
+└── main.ts
 ```
 
-Rules:
-- Must be self-contained in a single folder
-- Must expose functionality only through services
-- May depend on other domain modules when needed
-- May contain submodules relevant to the domain
-- Submodules must not be used directly by other modules
+## Folder Rules
 
-### App Modules
+| Folder | Purpose | Examples |
+|--------|---------|---------|
+| `core/` | Shared internal infra — things every module needs | `auth/`, `redis/`, `logger/`, `prisma/` |
+| `common/` | Lightweight utils with no business logic | `pipes/`, `decorators/`, `guards/`, `types/` |
+| `integrations/` | API clients for external services | `stripe/`, `paytech/`, `aws/`, `openai/` |
+| `modules/` | Core business features, one folder per domain concept | `user/`, `account/`, `payment/` |
+| `commands/` | One-off or repeated jobs | `process-transactions.command.ts` |
+| `events/` | Event-based architecture | `user-created/`, `payment-failed/` |
 
-Location: `src/apps/`. Entry points for AWS services and external interactions.
-
-- **HTTP API** (`src/apps/api/`) -- Handle HTTP requests, define routes and controllers, use guards for authentication
-- **Queue Consumer** (`src/apps/queue-consumer/`) -- Process domain-registered queues, one consumer per queue type
-- **CRON/Scheduler** (`src/apps/scheduler/`) -- Handle scheduled tasks, define CRON patterns
-
-Rules:
-- Must only import domain modules they explicitly need
-- Must handle external interactions (HTTP, Queue Processing, CRON)
-
-### Global Module
-
-Location: `src/global/`. Provide shared functionality across all app modules.
-
-```
-src/global/
-├── global.module.ts
-├── third-party-service/
-│   ├── third-party-service.module.ts
-│   ├── third-party-service.service.ts
-│   └── third-party-service.types.ts
-```
-
-Rules:
-- Must be registered in `src/global/global.module.ts`
-- Must use `@Global()` decorator
-- Must be wrappers for third-party services
-
-## Domain Module Creation
-
-### Core Files
-
-Every domain module requires:
-- `my-domain.module.ts` -- Module definition
-- `my-domain.service.ts` -- Service implementation
-- `my-domain.types.ts` -- Type definitions
-
-### Module Definition
-
-```typescript
-import { Module } from '@nestjs/common';
-import { MyDomainService } from './my-domain.service';
-
-@Module({
-  providers: [MyDomainService],
-  exports: [MyDomainService],
-})
-export class MyDomainModule {}
-```
-
-### Service Implementation
-
-```typescript
-import { Injectable } from '@nestjs/common';
-
-@Injectable()
-export class MyDomainService {
-  // Service methods
-}
-```
-
-### Submodule Creation
-
-- Must create subdirectory for each submodule
-- Must include module, service, and types files
-- Must import submodules in main domain module
-
-### Queue Integration
-
-- Must follow queue naming convention with domain name prefix (e.g., `MY_DOMAIN_QUEUE`)
-
-### Testing Requirements
-
-- Unit tests in `src/my-domain/__test__/`
-- E2E tests in `test/e2e/my-domain/`
-
-## Queue System
-
-### Domain Module Side
-
-Register queues in domain modules with domain-prefixed names:
-
-```typescript
-@Module({
-  imports: [BullModule.registerQueue({ name: 'DOMAIN_MODULE_QUEUE' })],
-  providers: [DomainModuleService],
-})
-export class DomainModule {}
-```
-
-### App Module Side
-
-- Queue consumers must be App Modules in `src/apps/queue-consumer/`
-- Must process queues registered by domain modules
-
-### Background Tasks
-
-- CRON jobs must be App Modules in `src/apps/scheduler/`
-- Schedule configuration must belong in App Modules only
-
-## Coding Standards
-
-### Architecture Principles
-
-- Must follow NestJS framework coding style
-- Must use object-oriented programming
-- Must follow SOLID design principles
-- Must prefer iteration and modularization over duplication
-- Must prefer composition over inheritance
-
-### Code Quality
-
-- Must use descriptive names for classes, methods, and variables
-- Must never use inline types in method signatures -- all argument types and return types must be named types defined in the module's `.types.ts` file
-- Must never define local `type` aliases inside method bodies -- extract them to the `.types.ts` file
-- Must not create methods, types, or code speculatively -- only add them when there is an actual caller (YAGNI)
-- Must not expose models outside their module
-- Must use services as interfaces between modules
-
-### Event Handling
-
-- Must place all event listeners in the `event-listener` module
-- Must handle heavy processing tasks through queue processors
-- Must not process heavy tasks directly in event listeners
-
-### Database Access
-
-- Must not use Prisma service to access tables from other modules
-- Must use respective module services to request data from other modules
-- Must prefer `QueryBuilderSql` over hand-rolled SQL strings for `pgPool` queries — improve the builder where needed rather than bypassing it
-- Must wrap raw `pgPool.query()` calls in try/catch with `this.handlePgError(error)` (not `handlePrismaError`, which is for Prisma ORM errors only)
-
-### Data Access Patterns
-
-- **Single `findMany` with `isArray`**: Models should expose one `findMany` accepting `id: number | number[]`. Use `Array.isArray(id) ? { in: id } : id` in the where clause. Guard empty arrays with early return. Don't create separate `findMany`/`findManyByIds` methods. Grouping/mapping logic belongs in the service layer, not the model.
-- **Guard consolidated methods against empty filters**: When a `findMany` accepts multiple optional params, add a guard requiring at least one filter is provided. Otherwise `findMany({})` could scan the entire table.
-- **Mutation responses must return enriched objects**: When a mutation creates or updates an entity with related data, the response must go through the enrichment pipeline (e.g., `enrichChatChannels`) instead of returning `fromEntity()` directly. Otherwise nullable relation fields return stale/null data.
-- **Avoid N+1 in enrichment pipelines**: When fetching related data for a list of entities, always use a single batched query (`WHERE IN`) instead of mapping over IDs with individual queries. Keep enrichment aligned with the existing batched pattern.
+---
 
 ## Naming Conventions
 
-### Files
+| Type | Convention | Example |
+|------|-----------|---------|
+| Domain folder | **Singular** | `user/`, `account/`, `payment/` |
+| Reusable code folder | **Plural** | `pipes/`, `utils/`, `decorators/` |
+| Service | `[name].service.ts` | `user.service.ts` |
+| Module | `[name].module.ts` | `auth.module.ts` |
+| Controller | `[name].controller.ts` | `user.controller.ts` |
+| Resolver (GraphQL) | `[name].resolver.ts` | `user.resolver.ts` |
+| DTO | `[action]-[entity].dto.ts` | `create-user.dto.ts`, `update-account.dto.ts` |
+| Entity/Model | `[name].entity.ts` | `user.entity.ts` |
+| Guard | `[name].guard.ts` | `jwt.guard.ts`, `roles.guard.ts` |
+| Pipe | `[name].pipe.ts` | `parse-int.pipe.ts` |
+| Interceptor | `[name].interceptor.ts` | `logging.interceptor.ts` |
+| External client | `[provider]-[entity].client.ts` | `stripe-payment.client.ts` |
+| Unit test | Beside implementation | `user.service.spec.ts` |
+| E2E test | `test/` or `e2e/` folder | `user.e2e-spec.ts` |
 
-- Must use kebab-case naming convention
-- Allowed extensions: `.module.ts`, `.service.ts`, `.controller.ts`, `.types.ts`, `.job.ts`
+---
 
-### Classes
+## Module Structure
 
-- Must use PascalCase (e.g., `MyService`)
+Each domain module in `modules/` follows this internal layout:
 
-### Methods and Properties
-
-- Must use camelCase (e.g., `getValue()`)
-
-### Constants
-
-- Must use ALL_CAPS (e.g., `MAX_ATTEMPTS`)
-
-## Import Paths
-
-Must use ESLint relative paths for all imports. Must not use `../` or `./` relative paths.
-
-```typescript
-// Correct
-import { MyService } from 'my-module/my.service';
-import { MyType } from 'my-module/my.types';
-import TestingApp from 'test/jest/test.app.jest';
-
-// Incorrect
-import { MyService } from '../../../my-module/my.service';
-import { MyType } from './my.types';
+```
+modules/user/
+├── dto/
+│   ├── create-user.dto.ts
+│   └── update-user.dto.ts
+├── user.module.ts
+├── user.service.ts
+├── user.resolver.ts        # if GraphQL
+├── user.controller.ts      # if REST
+├── user.entity.ts          # if using TypeORM/class-based entities
+├── user.types.ts           # module-specific types/interfaces
+└── user.service.spec.ts
 ```
 
-## Key Principles
+---
 
-1. Domain modules focus on business logic
-2. App modules handle application setup
-3. Global modules provide shared services
-4. Queue consumers must exist in App QueueConsumer
-5. Cron tasks must exist in App Scheduler
-6. Submodules must not be imported directly
-7. All functionality must be exposed through services
-8. Types must be in `.types.ts` files
-9. Global modules must be registered in global.module.ts
-10. App modules must minimize domain module dependencies
+## File Placement Decision Tree
+
+- **Business feature** → `modules/[feature]/`
+- **DTO** → `modules/[feature]/dto/`
+- **Module-specific decorator/utility** → `modules/[feature]/utils/`
+- **Global/shared decorator/utility** → `common/utils/`
+- **Auth, database, redis config** → `core/`
+- **External service wrapper** → `integrations/`
+- **CLI job or cron** → `commands/`
+- **Event publisher/listener** → `events/[event-name]/`
+
+---
+
+## Core Patterns
+
+### Module bootstrap
+```typescript
+@Module({
+  imports: [PrismaModule],
+  providers: [UserService, UserResolver],
+  exports: [UserService],
+})
+export class UserModule {}
+```
+
+### Service pattern
+```typescript
+@Injectable()
+export class UserService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async findById(id: string): Promise<User> {
+    return this.prisma.user.findUniqueOrThrow({ where: { id } });
+  }
+}
+```
+
+### DTO validation
+```typescript
+export class CreateUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+}
+```
+
+### Config/env validation (Zod)
+```typescript
+// config/env.config.ts
+const envSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  PORT: z.coerce.number().default(3001),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+});
+
+export const validateEnv = (config: Record<string, unknown>) => envSchema.parse(config);
+```
+
+---
+
+## Anti-patterns to Avoid
+
+- **Fat controllers** — business logic belongs in services, not controllers/resolvers
+- **Cross-module imports without exports** — export only what other modules need
+- **Putting everything in `common/`** — if it's business logic, it's a module
+- **Skipping DTOs** — always validate input at the boundary
+- **Hardcoding config** — all env vars go through the config module with Zod validation
+
+---
+
+## Key Principle
+
+**Consistency > Perfection.** Standardized structure from day one prevents architectural debates. When in doubt, use the decision tree above.
