@@ -36,8 +36,10 @@
       "Bash(tsc *)",
       "Bash(eslint *)",
       "Bash(prettier *)",
-      "mcp__linear",
       "mcp__context7",
+      "mcp__shadcn",
+      "mcp__iconify",
+      "mcp__21st-dev",
       "mcp__brave-search"
     ],
     "deny": [
