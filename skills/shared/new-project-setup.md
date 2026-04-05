@@ -201,21 +201,57 @@ web/
 
 ## Design System
 
-Dark mode first. Custom Tailwind tokens:
+Dark mode first. Base brand: midnight background `#200F07`, pistachio text `#C5E384`, Montserrat font.
 
 ```ts
 // tailwind.config.ts
 colors: {
-  primary: '#90cdff',      // Blue — primary actions, links
-  secondary: '#ffb4a8',    // Coral — secondary / warning states
-  tertiary: '#00e639',     // Green — success / positive indicators
+  background: '#200F07',
+  'on-background': '#C5E384',
+  'on-surface': '#C5E384',
+  'on-surface-variant': '#9BB865',
+  primary: '#C5E384',      // Pistachio — primary actions, links
+  'on-primary': '#200F07',
+  secondary: '#E8C97A',    // Warm amber — secondary states
+  tertiary: '#F4A261',     // Warm orange — accents / highlights
+  // Surface scale (warm dark, graduated from background)
+  'surface-container-lowest': '#160A03',
+  'surface-container-low': '#2A1509',
+  'surface-container': '#32190C',
+  'surface-container-high': '#3D2010',
+  'surface-container-highest': '#4A2814',
+  'surface-bright': '#5A3420',
+  outline: '#7A6050',
+  'outline-variant': '#4A3020',
+}
+fontFamily: {
+  headline: ['Montserrat', 'sans-serif'],
+  body: ['Montserrat', 'sans-serif'],
+  label: ['Montserrat', 'sans-serif'],
 }
 ```
 
 **Typography**:
-- Headlines: Space Grotesk (Google Fonts)
-- Body / labels: Inter (Google Fonts)
+- All text: Montserrat (Google Fonts, weights 300–800)
 - Icons: Material Symbols
+
+**Google Fonts link**:
+```html
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" />
+```
+
+**globals.css body defaults**:
+```css
+body {
+  background-color: #200F07;
+  color: #C5E384;
+  font-family: 'Montserrat', sans-serif;
+}
+.glass-panel {
+  background: rgba(61, 32, 16, 0.6);
+  backdrop-filter: blur(12px);
+}
+```
 
 **HTML setup**:
 ```tsx
