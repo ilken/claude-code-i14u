@@ -1,3 +1,8 @@
+---
+name: new-project-setup
+description: Opinionated new-project scaffold — NestJS + Prisma + BullMQ backend, Next.js + Tailwind + React Query frontend, Docker Compose, env layout, design tokens, and a step-by-step checklist. Use when creating a new project, repo, or app from scratch.
+---
+
 # New Project Setup — Reference Blueprint
 
 Use this skill when creating a new project from scratch. It documents the opinionated stack and folder structure derived from `plai-agent`. Deviate where the domain requires it, but treat this as the default starting point.
@@ -9,18 +14,20 @@ Use this skill when creating a new project from scratch. It documents the opinio
 ```
 project-root/
 ├── backend/                    # NestJS API server
+│   └── .env.example            # Backend env template (DATABASE_URL, REDIS_*, API keys, PORT)
 ├── web/                        # Next.js frontend
+│   └── .env.example            # Web env template (NEXT_PUBLIC_* vars)
 ├── certs/                      # SSL certificates (if needed)
 ├── .claude/                    # Claude Code config
 ├── .husky/                     # Git hooks
-├── .env                        # Local environment variables (gitignored)
-├── .env.example                # Committed template with all required vars
 ├── .gitignore
 ├── .prettierrc
 ├── docker-compose.yml          # Postgres + Redis + backend
 ├── docker-compose.override.yml # Local dev overrides
 ├── package.json                # Root-level dev tooling only (husky, lint-staged, prettier)
 └── yarn.lock
+
+> **No root `.env` or `.env.example`.** Each app owns its env file. Docker Compose reads `env_file: ./backend/.env` directly.
 ```
 
 > Not a monorepo manager (no Turbo/Nx). `backend/` and `web/` each have their own `package.json`. Root package.json only manages shared dev tooling.
@@ -263,26 +270,34 @@ body {
 
 ## Environment Variables
 
-`.env.example` at root — commit this, never commit `.env`:
+Each app owns its own `.env.example`. **Never put an `.env.example` at the repo root.**
+
+`backend/.env.example` — commit this, never commit `backend/.env`:
 
 ```env
-# Postgres
+# Postgres (used by Docker Compose to initialise the database)
 POSTGRES_USER=
 POSTGRES_PASSWORD=
 POSTGRES_DB=
 
-# Prisma
-DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}
+# Prisma — use localhost for local dev; Docker overrides to container hostname
+DATABASE_URL=postgresql://user:pass@localhost:5432/db
 
-# Redis
+# Redis — use localhost for local dev; Docker overrides REDIS_HOST to 'redis'
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
 # Backend
-BACKEND_PORT=3001
+PORT=3001
 
 # External APIs (add project-specific keys below)
 ANTHROPIC_API_KEY=
+```
+
+`web/.env.example` — commit this, never commit `web/.env.local`:
+
+```env
+NEXT_PUBLIC_GRAPHQL_URL=http://localhost:3001/graphql
 ```
 
 **Default ports**:
@@ -297,17 +312,17 @@ ANTHROPIC_API_KEY=
 
 ```yaml
 # docker-compose.yml
+# No root .env needed. Postgres, redis, and backend all read from backend/.env.
 services:
   postgres:
     image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    env_file: ./backend/.env        # provides POSTGRES_USER / PASSWORD / DB to the container
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U <POSTGRES_USER>"]  # hardcode the user from your .env
       interval: 5s
       timeout: 5s
       retries: 5
@@ -316,18 +331,37 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
       context: ./backend
-      target: production
+      target: development
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
-    env_file: .env
+      - "3001:3001"
+    env_file: ./backend/.env
+    environment:
+      # Override localhost URLs with container-internal hostnames
+      DATABASE_URL: postgresql://<user>:<pass>@postgres:5432/<db>
+      REDIS_HOST: redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
 ```
+
+> **Only the backend gets a Dockerfile.** The web app is never containerised — it runs locally via `yarn dev`. Only add it to Docker Compose if you're running it in CI or production; for local dev, `cd web && yarn dev` is sufficient.
 
 ### Dockerfile (backend, multi-stage)
 ```dockerfile
@@ -389,19 +423,20 @@ When starting a new project, work through these in order:
 
 1. [ ] Init git repo + create `main` branch
 2. [ ] Root `package.json` with husky + lint-staged + prettier
-3. [ ] `.env.example` with all required vars
-4. [ ] `docker-compose.yml` (postgres + redis)
-5. [ ] `backend/` — NestJS scaffold (`nest new backend --package-manager yarn`)
-6. [ ] Backend: install core packages (prisma, bullmq, apollo, zod, anthropic sdk)
-7. [ ] Backend: configure Prisma schema + initial migration
-8. [ ] Backend: set up three app layers (api, queue-consumer, scheduler)
-9. [ ] Backend: add TypeScript path aliases to tsconfig
-10. [ ] Backend: configure Zod env validation
-11. [ ] Backend: multi-stage Dockerfile
-12. [ ] `web/` — Next.js scaffold (`yarn create next-app web --typescript --tailwind --app --no-src-dir`)
-13. [ ] Web: install react-query, graphql-request, jotai
-14. [ ] Web: configure Tailwind with custom design tokens (colors, fonts)
-15. [ ] Web: set up `lib/api.ts`, `lib/query-client.tsx`, `lib/atoms.ts`
-16. [ ] Web: add dark mode to root layout
-17. [ ] Root: add Husky hooks + lint-staged
-18. [ ] Verify `docker compose up` starts all services cleanly
+3. [ ] `backend/.env.example` (DATABASE_URL, REDIS_*, API keys, PORT) — **not at repo root**
+4. [ ] `web/.env.example` (NEXT_PUBLIC_* vars) — **not at repo root**
+5. [ ] `docker-compose.yml` (postgres + redis + backend; `env_file: ./backend/.env`)
+6. [ ] `backend/` — NestJS scaffold (`nest new backend --package-manager yarn`)
+7. [ ] Backend: install core packages (prisma, bullmq, apollo, zod, anthropic sdk)
+8. [ ] Backend: configure Prisma schema + initial migration
+9. [ ] Backend: set up three app layers (api, queue-consumer, scheduler)
+10. [ ] Backend: add TypeScript path aliases to tsconfig
+11. [ ] Backend: configure Zod env validation
+12. [ ] Backend: multi-stage Dockerfile
+13. [ ] `web/` — Next.js scaffold (`yarn create next-app web --typescript --tailwind --app --no-src-dir`)
+14. [ ] Web: install react-query, graphql-request, jotai
+15. [ ] Web: configure Tailwind with custom design tokens (colors, fonts)
+16. [ ] Web: set up `lib/api.ts`, `lib/query-client.tsx`, `lib/atoms.ts`
+17. [ ] Web: add dark mode to root layout
+18. [ ] Root: add Husky hooks + lint-staged
+19. [ ] Verify `docker compose up` starts backend + postgres + redis cleanly; start web with `yarn dev`

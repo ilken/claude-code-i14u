@@ -14,6 +14,8 @@
 #  10.  Symlinks claude-solo, claude-team, and claude-lead to /usr/local/bin
 #  11.  Symlinks CLAUDE.md orchestrator to ~/.claude/CLAUDE.md
 #  12.  Installs global commands (startup:, project:) to ~/.claude/commands/
+#  13.  Symlinks native skills to ~/.claude/skills/
+#  14.  Symlinks team agents to ~/.claude/agents/
 #
 # Usage:
 #   chmod +x setup.sh && ./setup.sh
@@ -268,6 +270,42 @@ for file in "$LOCAL_COMMANDS_DIR"/*.md; do
   success "Command installed: $(basename "$file")"
 done
 
+# ─── Step 13: Install native skills ──────────────────────────────────────────
+
+info "Installing native skills (~/.claude/skills/)..."
+
+SKILLS_TARGET="$HOME/.claude/skills"
+mkdir -p "$SKILLS_TARGET"
+
+# skill-name:repo-dir pairs — each repo dir contains a SKILL.md
+for pair in \
+  "dev-workflow:dev-workflow" \
+  "debug-mode:debug-mode" \
+  "new-project-setup:new-project-setup" \
+  "web-ui-design:web-ui-design" \
+  "app-dev:app" \
+  "backend-dev:backend" \
+  "web-dev:web" \
+  "ui-ux-pro-max:ui-ux-pro-max"; do
+  name="${pair%%:*}"
+  dir="${pair##*:}"
+  ln -sfn "$SCRIPT_DIR/skills/$dir" "$SKILLS_TARGET/$name"
+  success "Skill installed: $name"
+done
+
+# ─── Step 14: Install team agents ────────────────────────────────────────────
+
+info "Installing team agents (~/.claude/agents/)..."
+
+AGENTS_TARGET="$HOME/.claude/agents"
+mkdir -p "$AGENTS_TARGET"
+
+for agent in "$SCRIPT_DIR"/agents/*.md; do
+  [[ -f "$agent" ]] || continue
+  ln -sf "$agent" "$AGENTS_TARGET/$(basename "$agent")"
+  success "Agent installed: $(basename "$agent" .md)"
+done
+
 # ─── Done ─────────────────────────────────────────────────────────────────────
 
 echo ""
@@ -285,5 +323,5 @@ echo -e "  ${GREEN}Ctrl+Cmd+T${NC}             Open iTerm2 Claude Team window"
 echo ""
 echo -e "  ${BOLD}Design System:${NC}"
 echo -e "  Run ${GREEN}uipro init --ai claude${NC} in any project to install/update the UI skill"
-echo -e "  Templates for BRAND-VOICE, DESIGN-TOKENS, MOTION-SPEC in skills/shared/templates/"
+echo -e "  Templates for BRAND-VOICE, DESIGN-TOKENS, MOTION-SPEC in skills/web-ui-design/templates/"
 echo ""

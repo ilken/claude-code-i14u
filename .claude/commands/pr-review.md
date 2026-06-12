@@ -85,7 +85,7 @@ Before looking at CodeRabbit comments, perform your own analysis of the PR chang
     - Focus on patterns that will prevent similar comments in the future
 
 13. **Validate**:
-    - Read `~/Documents/GitHub/claude-code-config/skills/shared/changes-validation.md` to get the right commands for the current project
+    - Read `~/Developer/claude-code-i14u/skills/dev-workflow/changes-validation.md` to get the right commands for the current project
     - Run the project's lint/prettier/typecheck commands
     - Fix any issues in a loop until clean
 

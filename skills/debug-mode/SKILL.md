@@ -1,3 +1,8 @@
+---
+name: debug-mode
+description: Systematic debugging methodology — hypothesize causes, narrow down, add diagnostic logs, gather evidence, analyse, then fix. Use when facing a non-obvious bug, unexpected runtime behavior, failing tests with unclear cause, or when asked to enter debug mode.
+---
+
 # Debug Mode
 
 A systematic debugging methodology. Use this when asked to enter debug mode or when facing a non-obvious bug.

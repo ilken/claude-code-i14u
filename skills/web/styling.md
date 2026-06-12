@@ -128,4 +128,4 @@ When building UI, always check:
 2. `BRAND-VOICE.md` — what aesthetic to aim for
 3. `MOTION-SPEC.md` — how interactions should feel
 
-If these files don't exist in the project root, generate them from the templates in `~/Developer/claude-code-i14u/skills/shared/templates/`.
+If these files don't exist in the project root, generate them from the templates in `~/Developer/claude-code-i14u/skills/web-ui-design/templates/`.

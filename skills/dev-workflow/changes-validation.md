@@ -50,13 +50,21 @@ yarn test src/utils/__tests__/formatDate.test.ts
 
 ### Code Quality
 ```bash
-npm run lint && npm run typecheck && npm run build
+yarn lint && yarn typecheck && yarn build
 ```
 
 ### Tests
 ```bash
-npm test -- {TEST_FILE_PATH}
+yarn test {TEST_FILE_PATH}
 ```
+
+---
+
+## Any Other Project
+
+Check `package.json` scripts (or the project's CLAUDE.md) and run, in order of
+availability: lint, typecheck/tsc, tests touching the changed files, build.
+Use the project's own package manager — default to yarn when ambiguous.
 
 ---
 
@@ -69,6 +77,35 @@ npm test -- {TEST_FILE_PATH}
 5. Repeat until clean
 
 Do not commit or hand off with known failures.
+
+---
+
+## Automate It Per Project (Recommended)
+
+Instructions can be forgotten; hooks cannot. In each project's
+`.claude/settings.json`, add a `Stop` hook that runs the project's typecheck
+when a session finishes making changes, feeding failures back automatically:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && if ! git diff --quiet 2>/dev/null; then yarn --silent tsc --noEmit 2>&1 | tail -20; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Adjust the command to the project's validation script (e.g.
+`yarn code:full-lint` for backend/app projects). Keep it fast — typecheck or
+lint-on-changed-files, not the full test suite.
 
 ---
 
