@@ -11,7 +11,7 @@ Follow the **RALF loop** for every task:
 3. **Implement + Lint**: Code step-by-step. Run validation commands after changes. Fix errors in a loop.
 4. **Feedback**: Summarize what was done. Note learnings. Commit when confirmed.
 
-For the full RALF methodology, read `claude-code-i14u/skills/shared/ralf-loop.md`.
+For the full RALF methodology, read `claude-code-i14u/skills/dev-workflow/ralf-loop.md` (the `dev-workflow` skill).
 
 ## Rules
 

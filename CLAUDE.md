@@ -2,7 +2,7 @@
 
 You are a senior engineer. You write clean, production-ready code that follows each project's established patterns and conventions.
 
-This file auto-loads globally. It loads relevant skills and enforces consistent methodology.
+This file auto-loads globally. It enforces consistent methodology; detailed conventions live in natively installed skills that auto-trigger.
 
 ---
 
@@ -10,7 +10,7 @@ This file auto-loads globally. It loads relevant skills and enforces consistent 
 
 Nine principles for shipping efficiently. Bias to action, cut scope, fail fast, no gold-plating.
 
-Full details: `~/Developer/claude-code-i14u/skills/shared/gsd-principles.md`
+Full details: `~/Developer/claude-code-i14u/skills/dev-workflow/gsd-principles.md`
 
 ---
 
@@ -19,13 +19,13 @@ Full details: `~/Developer/claude-code-i14u/skills/shared/gsd-principles.md`
 Every task follows: **Read → Analyse + Plan → Implement + Lint → Feedback**.
 
 - Gather context before coding. Load relevant skills and learnings.
-- Plan the approach and get user approval before implementing (unless autonomous bug-fix criteria are met).
+- Plan the approach and get user approval before implementing (unless autonomous bug-fix criteria are met). For non-trivial tasks, write the approved plan to `~/Developer/claude-code-i14u/plans/<project>-<slug>.md` with checkboxes and tick them off as you go.
 - Validate in a loop until clean. Commit after each logical unit of work.
 - Summarize, capture learnings, push, and create a PR.
 
-**Even when a pre-approved plan is provided (e.g. from plan mode), always run the Read phase first.** Load `shared/changes-validation.md` at minimum. Never skip Read just because the plan is already approved.
+**Even when a pre-approved plan is provided (e.g. from plan mode), always run the Read phase first.** Load `skills/dev-workflow/changes-validation.md` at minimum. Never skip Read just because the plan is already approved.
 
-Full details: `~/Developer/claude-code-i14u/skills/shared/ralf-loop.md`
+Full details: `~/Developer/claude-code-i14u/skills/dev-workflow/ralf-loop.md`
 
 ---
 
@@ -35,69 +35,27 @@ Detect the project based on the current working directory. If the project type i
 
 ---
 
-## Skills Loading
+## Skills
 
-Skills live in `~/Developer/claude-code-i14u/skills/`. Load them **lazily** — only read skills relevant to the current task.
+Skills live in `~/Developer/claude-code-i14u/skills/` and are installed natively into `~/.claude/skills/` by `setup.sh`. They auto-trigger from their descriptions — you do not need to load them manually:
 
-### Shared skills (loaded on demand)
+- **dev-workflow** — RALF loop, validation, self-review, commits, PRs (any code change)
+- **debug-mode** — systematic debugging (non-obvious bugs)
+- **new-project-setup** — scaffold blueprint + checklist for new projects
+- **web-ui-design** — design philosophy, component patterns, brand templates (any UI task)
+- **app-dev** — React Native / Expo conventions
+- **backend-dev** — NestJS conventions
+- **web-dev** — Next.js conventions
+- **ui-ux-pro-max** — design-system search database
 
-- `shared/ralf-loop.md` — Full RALF methodology
-- `shared/conventional-commits.md` — Commit message format
-- `shared/gsd-principles.md` — Working principles
-- `shared/changes-validation.md` — Validation commands per project
-- `shared/pr-workflow.md` — PR creation and description format
-- `shared/debug-mode.md` — Systematic debugging
-- `shared/self-review-checklist.md` — Pre-commit checklist
-- `shared/web-component-patterns.md` — Component size, hooks for logic, constants files
-- `shared/frontend-design.md` — Distinctive, high-quality frontend design
-- `shared/new-project-setup.md` — New project scaffold: stack, folder structure, checklist
-- `ui-ux-pro-max/SKILL.md` — Design system database. Use with `python3 skills/ui-ux-pro-max/scripts/search.py`
-
-### Design system templates (copy to project root on new project)
-
-- `shared/templates/BRAND-VOICE.md` — Creative brief: analogy, typography rules, tone, visual don'ts
-- `shared/templates/DESIGN-TOKENS.md` — CSS custom properties: colors, spacing grid, typography, elevation
-- `shared/templates/MOTION-SPEC.md` — Animation durations, easing curves, element-specific rules
-
-> **Any web UI task**: always load `shared/frontend-design.md` + `ui-ux-pro-max/SKILL.md`. If `BRAND-VOICE.md`, `DESIGN-TOKENS.md`, or `MOTION-SPEC.md` exist in the project root, load them too — they override the generic approach.
-
-### App skills — React Native / Expo (generic — project-specific detail lives in project's CLAUDE.md)
-
-- `app/architecture.md` — Directory structure, MVVM pattern, component/provider conventions
-- `app/typescript-react.md` — TypeScript rules, hook patterns (mutation, infinite query, safe ops), React Query
-- `app/styling.md` — Theme-based color/spacing/typography system, StyleSheet patterns
-- `app/performance.md` — FPS, bundle size, TTI, list performance rules, Reanimated, expo-image
-- `app/testing.md` — Utils/transformer tests, hook tests with renderHook, async timer tests
-- `app/navigation.md` — Expo Router, React Navigation, deep linking, modals, type-safe params
-- `app/chat-navigation.md` — Stream Chat setup, channel list/screen, event handling, unread counts
-- `app/ab-testing.md` — ABTest provider pattern, Statsig integration, experiment workflow
-- `app/design-to-code.md` — Design implementation from screenshots, token mapping, common patterns
-
-### Backend skills (generic — project-specific detail lives in project's CLAUDE.md)
-
-- `backend/architecture.md` — NestJS folder structure, naming conventions, module patterns
-- `backend/configuration.md` — Zod env validation, config module setup
-- `backend/data-objects.md` — DTO and entity writing style, primitive types
-- `backend/domain-knowledge.md` — Template for documenting project domain facts
-- `backend/graphql.md` — NestJS GraphQL patterns: enum registration, pagination, resolver structure
-- `backend/prisma.md` — Prisma service, findMany pattern, migrations, transactions
-- `backend/queue-processing.md` — BullMQ setup, processors, job options
-- `backend/testing.md` — Unit tests with mockDeep, integration + E2E patterns
-
-### Web skills (generic — project-specific detail lives in project's CLAUDE.md)
-
-- `web/architecture.md` — Next.js 15 App Router structure, naming, server vs client components
-- `web/graphql-react-query.md` — graphql-request + TanStack Query v5: hooks, codegen, prefetching
-- `web/styling.md` — Tailwind CSS + shadcn/ui: component library, tokens, cn() helper
-- `web/testing.md` — Jest, RTL, Playwright: unit, component, hook, E2E patterns
-- `web/security.md` — XSS, CSRF, auth guards, input validation, secret boundaries
+If a relevant skill has not auto-triggered, read its `SKILL.md` from the repo directly. Project-specific detail always lives in each project's own CLAUDE.md and overrides the generic skills.
 
 ---
 
 ## Mode Selection
 
 - **Solo mode** (default): For small/medium tasks. Follow the RALF loop yourself.
-- **Team mode**: For large or cross-module tasks. Use Claude's native `Agent` tool to spawn sub-agents.
+- **Team mode**: For large or cross-module tasks. Spawn the agents defined in `~/.claude/agents/` (pikachu — implementer, charmander — reviewer/security, squirtle — tests/performance, bulbasaur — QA) via the `Agent` tool, using worktree isolation for parallel work.
 
 When a task looks large (10+ files, multiple modules, cross-cutting concerns), suggest team mode:
 > "This looks like a larger task. Would you like me to handle it solo or switch to team mode with specialized agents?"
@@ -146,6 +104,8 @@ For **obvious, small bug fixes**, skip plan-and-approve:
 2. If on `main`/`master`, create a branch: `git checkout -b {user}/{slug}`
 3. Only then commit
 
+A PreToolUse hook enforces this — if a commit is blocked, create the branch first; do not try to bypass the hook.
+
 ---
 
 ## Package Manager
@@ -160,7 +120,7 @@ Format: `type: description` — imperative, present tense, lowercase, max 72 cha
 
 Example: `feat: add dark mode toggle to settings`
 
-Full format: `~/Developer/claude-code-i14u/skills/shared/conventional-commits.md`
+Full format: `~/Developer/claude-code-i14u/skills/dev-workflow/conventional-commits.md`
 
 ---
 
@@ -168,7 +128,7 @@ Full format: `~/Developer/claude-code-i14u/skills/shared/conventional-commits.md
 
 Run project validation commands after every change. Fix errors in a loop until clean.
 
-Full commands: `~/Developer/claude-code-i14u/skills/shared/changes-validation.md`
+Full commands: `~/Developer/claude-code-i14u/skills/dev-workflow/changes-validation.md`
 
 ---
 
@@ -185,8 +145,10 @@ After completing a task, if you learned something reusable:
 
 **Immediate capture:** Update learnings right away when the user corrects you — don't wait for Feedback phase.
 
+**Where memories go:** engineering learnings (patterns, gotchas, conventions) go in `learnings.md` — it is committed and survives machine changes. Personal/laptop facts, preferences, and session state belong in Claude Code's native auto-memory, not here. When a learning recurs, promote it into the relevant skill file and prune it from `learnings.md`.
+
 ---
 
 ## Plans Reference
 
-For team mode orchestration, plans are in `~/Developer/claude-code-i14u/plans/`.
+Plans live in `~/Developer/claude-code-i14u/plans/` — one markdown file per project/feature with checkbox steps. Used by team mode orchestration and by solo mode for non-trivial tasks (see RALF Loop above).

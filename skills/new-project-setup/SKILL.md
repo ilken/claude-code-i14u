@@ -1,3 +1,8 @@
+---
+name: new-project-setup
+description: Opinionated new-project scaffold — NestJS + Prisma + BullMQ backend, Next.js + Tailwind + React Query frontend, Docker Compose, env layout, design tokens, and a step-by-step checklist. Use when creating a new project, repo, or app from scratch.
+---
+
 # New Project Setup — Reference Blueprint
 
 Use this skill when creating a new project from scratch. It documents the opinionated stack and folder structure derived from `plai-agent`. Deviate where the domain requires it, but treat this as the default starting point.

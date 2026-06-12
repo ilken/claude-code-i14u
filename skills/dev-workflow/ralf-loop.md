@@ -16,7 +16,7 @@ Before writing any code, gather full context:
 
 Do not start coding until you understand what is being asked and where it fits.
 
-**This phase is never optional.** Even when a pre-approved plan is provided (e.g. from plan mode), always run the Read phase. At minimum, load `shared/changes-validation.md` to get the correct validation commands for the project. Skipping Read leads to wrong commands and missed workflow steps (commit, PR).
+**This phase is never optional.** Even when a pre-approved plan is provided (e.g. from plan mode), always run the Read phase. At minimum, load `changes-validation.md` to get the correct validation commands for the project. Skipping Read leads to wrong commands and missed workflow steps (commit, PR).
 
 ---
 
@@ -32,6 +32,11 @@ Assess the scope and form a plan before implementation:
    - What tests to write or update
    - What validation to run
 4. **Get user approval** before proceeding (for non-trivial changes)
+5. **Write the approved plan to a file** -- for non-trivial tasks (multi-step,
+   multi-module, or anything likely to span a long session), save the plan to
+   `~/Developer/claude-code-i14u/plans/<project>-<slug>.md` with checkbox steps.
+   Tick items off as you implement. The plan file survives compaction and
+   crashes; the chat message does not.
 
 Keep the plan minimal. If the task is simple, a mental checklist is enough -- do not over-plan.
 
@@ -41,15 +46,16 @@ Keep the plan minimal. If the task is simple, a mental checklist is enough -- do
 
 Write the code, then validate in a loop until clean:
 
-1. **Implement** the changes following the plan
-2. **Run validation commands** for the project:
-   - Backend: `yarn code:full-lint && yarn test:local -- {file}`
-   - App: `yarn code:full-lint`
-   - Web: `npm run lint && npm run typecheck && npm run build`
-3. **Fix any errors** -- lint, type, test failures
-4. **Repeat** steps 2-3 until all checks pass
-5. **Self-review** -- run through `shared/self-review-checklist.md` to catch issues that linting misses but reviewers flag (inline types, missing try-catch, redundant queries, etc.)
-6. **Commit** after each logical unit of work -- don't batch everything into one big commit at the end. Each step of the plan or cohesive file group should be its own commit.
+1. **Test first for bug fixes** -- before fixing a bug, write a failing test that
+   reproduces it. The fix is done when the test passes. For new features, write
+   tests alongside the implementation, not as an afterthought.
+2. **Implement** the changes following the plan
+3. **Run validation commands** for the project -- see `changes-validation.md`
+   for the per-project commands and the generic fallback
+4. **Fix any errors** -- lint, type, test failures
+5. **Repeat** steps 3-4 until all checks pass
+6. **Self-review** -- run through `self-review-checklist.md` to catch issues that linting misses but reviewers flag (inline types, missing try-catch, redundant queries, etc.)
+7. **Commit** after each logical unit of work -- don't batch everything into one big commit at the end. Each step of the plan or cohesive file group should be its own commit.
 
 Do not move on with known failures. The loop ends when validation is green.
 
@@ -75,10 +81,13 @@ This is not a failure — it is the plan adapting to reality.
 
 Wrap up the task cleanly:
 
-1. **Summarize** what was done -- files changed, decisions made, anything noteworthy
-2. **Note learnings** -- if you discovered something useful, append it to memory
-3. **Push and create a PR** -- push the branch and open a PR (see `shared/pr-workflow.md` for format). Commits should already exist from the Implement phase.
-4. **Flag open questions** -- anything that needs follow-up or user decision
+1. **Verify behavior, not just checks** -- for user-facing changes (UI, CLI,
+   API behavior), run the app and observe the change working (the `/verify`
+   skill automates this). Lint-clean does not mean it works.
+2. **Summarize** what was done -- files changed, decisions made, anything noteworthy
+3. **Note learnings** -- if you discovered something useful, append it to memory
+4. **Push and create a PR** -- push the branch and open a PR (see `pr-workflow.md` for format). Commits should already exist from the Implement phase.
+5. **Flag open questions** -- anything that needs follow-up or user decision
 
 ### Immediate Learning Capture
 

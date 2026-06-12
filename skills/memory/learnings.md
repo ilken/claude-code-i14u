@@ -4,6 +4,13 @@ Append new learnings at the top. Format:
 
 ## [DATE] [PROJECT] - [Topic]
 
+## 2026-06-12 claude-code-i14u - Claude Code hooks: stdin JSON, exit 2 to block
+- Hooks receive tool input as JSON on **stdin** (`jq -r '.tool_input.command'`), not via env vars — `$CLAUDE_TOOL_INPUT` does not exist and silently expands to empty
+- Only **exit 2** blocks an action in PreToolUse hooks; exit 1 is a non-blocking error and the action proceeds
+- Always test hooks by piping sample JSON (`echo '{"tool_input":{...}}' | bash -c "$HOOK"`) — broken hooks fail silently and give false confidence
+- `CLAUDE_PROJECT_DIR` is available to hooks; use `git -C "$CLAUDE_PROJECT_DIR"` so the hook works regardless of cwd
+---
+
 ## 2026-04-14 affiliate-link-sniper - App-specific env files, no web Dockerfile
 - `.env.example` lives in each app (`apps/backend/.env.example`, `apps/web/.env.example`), never at the repo root
 - The web app has no Dockerfile — it runs with `yarn dev` locally, not in Docker
