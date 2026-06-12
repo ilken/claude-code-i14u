@@ -4,6 +4,13 @@ Append new learnings at the top. Format:
 
 ## [DATE] [PROJECT] - [Topic]
 
+## 2026-04-14 affiliate-link-sniper - App-specific env files, no web Dockerfile
+- `.env.example` lives in each app (`apps/backend/.env.example`, `apps/web/.env.example`), never at the repo root
+- The web app has no Dockerfile — it runs with `yarn dev` locally, not in Docker
+- Docker Compose uses `env_file: ./apps/backend/.env` on all services that need it (postgres + backend); `environment:` block overrides container-specific hostnames (e.g. `DATABASE_URL` pointing to `postgres` instead of `localhost`)
+- No root `.env` or `.env.example` needed; docker-compose variable substitution is avoided by using `env_file` directly
+---
+
 ## 2026-03-18 Backend - MUTUAL friendship status is symmetric
 When querying `findManyFriends` with `status: [FriendshipStatus.MUTUAL]`, only one direction needs to be checked. If A→B is MUTUAL, B→A is inherently mutual too. Don't query both `(requesterProfileId: [author], recipientProfileId: targets)` and the reverse — one query is sufficient.
 ---

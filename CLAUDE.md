@@ -148,6 +148,12 @@ For **obvious, small bug fixes**, skip plan-and-approve:
 
 ---
 
+## Package Manager
+
+Always use **yarn**. Never propose or use `pnpm` or `npm` scripts unless the project already uses them and switching would be disruptive.
+
+---
+
 ## Conventional Commits
 
 Format: `type: description` — imperative, present tense, lowercase, max 72 chars.
