@@ -9,10 +9,11 @@ How to create pull requests consistently across all projects.
 Mirrors the conventional commit format:
 
 ```
-type(EQLS-XXXX): short description
+type(#123): short description
 ```
 
 - Same types as commits: `feat`, `fix`, `chore`, `refactor`, `hotfix`
+- Include GitHub issue number as scope when working from an issue; omit otherwise
 - Max 70 characters
 - Imperative, lowercase
 
@@ -33,7 +34,7 @@ type(EQLS-XXXX): short description
 - [ ] Manual testing steps if applicable
 - [ ] Tests added or updated
 
-Resolves: EQLS-XXXX
+Closes #XXX
 ```
 
 ---
@@ -54,7 +55,7 @@ Create a PR using the GitHub CLI:
 
 ```bash
 gh pr create \
-  --title "type(EQLS-XXXX): description" \
+  --title "type(#123): description" \
   --body "$(cat <<'EOF'
 ## Summary
 - ...
@@ -65,7 +66,7 @@ gh pr create \
 ## Testing
 - [ ] ...
 
-Resolves: EQLS-XXXX
+Closes #123
 EOF
 )"
 ```
@@ -93,4 +94,4 @@ gh pr edit --add-reviewer @username
 1. Ensure all changes are committed
 2. Push branch to origin: `git push -u origin HEAD`
 3. Create PR with `gh pr create`
-4. Include `Resolves: EQLS-XXXX` to auto-link the Linear ticket
+4. Include `Closes #XXX` to auto-close the GitHub issue when the PR merges

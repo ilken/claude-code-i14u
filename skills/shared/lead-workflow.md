@@ -6,31 +6,36 @@ Reference skill for Project Lead Mode (Oak). Loaded lazily when processing a pro
 
 ## Phase 1 — Read Project
 
-Fetch all project context from Linear before doing anything else.
+Fetch all project context from GitHub before doing anything else.
 
 ### Tools
 
-```
-mcp__linear__get_project        → project overview, description, status
-mcp__linear__list_milestones    → milestone groupings within the project
-mcp__linear__list_issues        → existing tickets (avoid duplicates)
-mcp__linear__list_documents     → PRDs, specs, design docs
-mcp__linear__get_document       → full content of each document
+```bash
+# Get repo and project overview
+gh repo view --json name,description,defaultBranchRef
+
+# List existing issues (avoid duplicates)
+gh issue list --repo <owner>/<repo> --limit 100 --json number,title,labels,state
+
+# Read the PRD issue (usually issue #1 or labelled 'prd')
+gh issue view <number> --repo <owner>/<repo>
+
+# List GitHub project items linked to the repo
+gh project item-list <project-number> --owner "@me" --format json
 ```
 
 ### What to extract
 
-- Project goal and scope
-- Milestones and their grouping logic
-- Existing tickets (to avoid duplication)
-- PRD/spec content with requirements and acceptance criteria
+- Project goal and scope (from PRD issue)
+- Existing issues (to avoid duplication)
+- PRD acceptance criteria and user stories
 - Any linked resources (Figma URLs, API docs, external references)
 
 ---
 
 ## Phase 2 — Check Figma
 
-Scan project description and documents for Figma URLs. Extract design context for each.
+Scan the PRD and issue descriptions for Figma URLs. Extract design context for each.
 
 ### URL parsing
 
@@ -42,7 +47,7 @@ Extract `fileKey` and `nodeId` from URLs:
 
 ```
 mcp__claude_ai_Figma__get_design_context   → code hints, screenshot, component info
-  - clientFrameworks: "react-native"
+  - clientFrameworks: "react-native" or "react"
   - clientLanguages: "typescript"
 mcp__claude_ai_Figma__get_metadata         → page-level overview of the file
 mcp__claude_ai_Figma__get_screenshot       → visual reference for specific nodes
@@ -55,32 +60,22 @@ Per screen/component:
 - Design tokens (colors, spacing, typography)
 - Component names and variants
 - Any Code Connect mappings or annotations
-- Screenshots for ticket descriptions
+- Screenshots for issue descriptions
 
 ---
 
 ## Phase 3 — Explore Codebase
 
-Understand the current state of both repos before decomposing work.
+Understand the current state of the repo before decomposing work.
 
-### Backend (`equals-client-be`)
+### What to explore
 
-Explore:
-- `src/` module structure — which modules exist, how they're organized
+- Module/folder structure — which modules exist, how they're organized
 - Prisma schema — existing models, relations, enums
 - GraphQL resolvers and mutations — what's already exposed
 - Services and domain logic — existing patterns to follow
 - DTOs and input types — naming conventions
-
-### App (`equals-client-app`)
-
-Explore:
-- `src/screens/` — existing screens and navigation structure
-- `src/components/` — reusable components library
-- `src/hooks/` — custom hooks and data fetching patterns
-- `src/graphql/` — queries, mutations, fragments
-- Navigation config — stack/tab structure
-- Existing patterns for similar features
+- Existing screens, components, hooks — reusable patterns
 
 ### Key questions to answer
 
@@ -93,15 +88,15 @@ Explore:
 
 ## Phase 4 — Analyse & Decompose
 
-Split the project into ordered, right-sized implementation tickets.
+Split the project into ordered, right-sized implementation issues.
 
 ### Splitting rules
 
-1. **Backend before app** — data model → API → UI
+1. **Backend before frontend** — data model → API → UI
 2. **Data model first** — Prisma migrations before services
-3. **One concern per ticket** — don't mix unrelated changes
-4. **3-8 files per ticket** — right-size for `claude-solo` pickup
-5. **Sequence by dependency** — number tickets in execution order
+3. **One concern per issue** — don't mix unrelated changes
+4. **3-8 files per issue** — right-size for solo pickup
+5. **Sequence by dependency** — number issues in execution order
 
 ### Ordering pattern
 
@@ -109,22 +104,12 @@ Split the project into ordered, right-sized implementation tickets.
 1. [BE] Prisma schema + migration
 2. [BE] Service layer + business logic
 3. [BE] GraphQL resolvers + DTOs
-4. [APP] GraphQL queries/mutations + types
-5. [APP] Shared components (if new)
-6. [APP] Screen implementation
-7. [APP] Navigation wiring
-8. [BE/APP] Edge cases, error handling, polish
+4. [APP/WEB] GraphQL queries/mutations + types
+5. [APP/WEB] Shared components (if new)
+6. [APP/WEB] Screen/page implementation
+7. [APP/WEB] Navigation wiring
+8. [BE/APP/WEB] Edge cases, error handling, polish
 ```
-
-### Label assignment
-
-Look up label IDs via `mcp__linear__list_issue_labels` for:
-- `equals-client-be` — backend tickets
-- `equals-client-app` — app tickets
-
-### Milestone assignment
-
-If the project has milestones, assign each ticket to the appropriate milestone based on the decomposition.
 
 ---
 
@@ -137,19 +122,19 @@ Show the full breakdown and **wait for explicit approval** before creating anyth
 ```markdown
 ## Project Decomposition: [Project Name]
 
-| # | Title | Type | Labels | Depends On | Milestone |
-|---|-------|------|--------|------------|-----------|
-| 1 | Add user profile model | BE | equals-client-be | — | MVP |
-| 2 | Profile CRUD service | BE | equals-client-be | #1 | MVP |
-| 3 | Profile GraphQL resolvers | BE | equals-client-be | #2 | MVP |
-| 4 | Profile screen UI | APP | equals-client-app | #3 | MVP |
+| # | Title | Type | Depends On |
+|---|-------|------|------------|
+| 1 | Add user profile model | BE | — |
+| 2 | Profile CRUD service | BE | #1 |
+| 3 | Profile GraphQL resolvers | BE | #2 |
+| 4 | Profile screen UI | APP | #3 |
 
 ### Dependency Graph
 
 1 → 2 → 3 → 4
 ```
 
-Include for each ticket:
+Include for each issue:
 - Brief description of what it covers
 - Key files to create/modify
 - Figma references (if applicable)
@@ -158,30 +143,28 @@ Include for each ticket:
 
 ---
 
-## Phase 6 — Create Tickets
+## Phase 6 — Create Issues
 
-Create tickets in dependency order on Linear.
+Create GitHub issues in dependency order.
 
 ### Creation order
 
-1. Create non-dependent tickets first → capture their IDs
-2. Create dependent tickets with `blockedBy` relations using captured IDs
-3. Assign all metadata: team, project, milestone, labels, priority, state
+1. Create non-dependent issues first → note their numbers
+2. Create dependent issues with "Blocked by #N" in the body
+3. Add each issue to the GitHub project after creation
 
-### Ticket defaults
+### Issue defaults
 
-Every ticket must be created with:
-- **state**: `Todo`
+Every issue must be created with:
 - **assignee**: `ilken`
-- **labels**: `FRAME-XYZ/equals-client-be` (backend) or `FRAME-XYZ/equals-client-app` (app)
+- **label**: `enhancement` (or more specific if applicable)
+- **project**: linked GitHub project
 
-### Ticket description template
-
-Each ticket description should follow this structure:
+### Issue description template
 
 ```markdown
 ## Overview
-[1-2 sentence summary of what this ticket delivers]
+[1-2 sentence summary of what this issue delivers]
 
 ## Technical Approach
 
@@ -203,39 +186,40 @@ Each ticket description should follow this structure:
 - [ ] [Criterion 3]
 
 ## Dependencies
-- Blocked by: [EQLS-XXXX] [ticket title]
+- Blocked by: #N [issue title]
 
 ## References
 - [Links to PRD, Figma, API docs, etc.]
 ```
 
-### Tool usage
+### CLI commands
 
-```
-mcp__linear__save_issue
-  - title: "ticket title"
-  - description: [template above]
-  - team: "Equals"
-  - project: [project name]
-  - milestone: [if applicable]
-  - labels: ["FRAME-XYZ/equals-client-be"] or ["FRAME-XYZ/equals-client-app"]
-  - priority: [1-4, matching project priority]
-  - state: "Todo"
-  - assignee: "ilken"
-  - blockedBy: [identifiers of tickets this depends on, e.g. "EQLS-1001"]
+```bash
+# Create an issue
+gh issue create \
+  --title "Title here" \
+  --body-file /tmp/issue-body.md \
+  --label "enhancement" \
+  --assignee "@me" \
+  --repo <owner>/<repo>
+
+# Add the issue to the GitHub project
+gh project item-add <project-number> \
+  --owner "@me" \
+  --url <issue-url>
 ```
 
 ### Post-creation summary
 
-After all tickets are created, present a summary table:
+After all issues are created, present a summary table:
 
 ```markdown
-## Created Tickets
+## Created Issues
 
-| # | ID | Title | Status |
-|---|-----|-------|--------|
-| 1 | EQLS-1001 | Add user profile model | Created |
-| 2 | EQLS-1002 | Profile CRUD service | Created |
+| # | GitHub Issue | Title | Status |
+|---|-------------|-------|--------|
+| 1 | #10 | Add user profile model | Created |
+| 2 | #11 | Profile CRUD service | Created |
 
-All tickets created with blocking relations set.
+All issues created with blocking relations noted in descriptions.
 ```

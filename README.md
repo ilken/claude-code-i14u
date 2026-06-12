@@ -1,27 +1,28 @@
 # Claude Code Config (i14u)
 
-One-command setup for Claude Code with a unified skills architecture, RALF methodology, and two operating modes (Solo Dev and Team Lead). Includes shared methodology skills, MCP servers, hardened security settings, and a Warp terminal setup.
+One-command setup for Claude Code with native skills, RALF methodology, deterministic hooks, and three operating modes (Solo Dev, Team Lead, Project Lead).
 
 ## What You Get
 
 | Feature | Description |
 |---------|-------------|
-| **CLAUDE.md Orchestrator** | Auto-loads globally, loads relevant skills |
-| **Skills Architecture** | Shared methodology and project-agnostic conventions |
+| **CLAUDE.md Orchestrator** | Auto-loads globally — methodology, modes, guardrails |
+| **Native Skills** | Auto-triggering skills for workflow, debugging, design, and per-stack conventions |
 | **RALF Loop** | Read, Analyse+Plan, Implement+Lint, Feedback — enforced for every task |
-| **GSD Principles** | 8 working principles: bias to action, ship over perfect, cut scope, etc. |
-| **Solo Dev Mode** | Single-agent Claude that follows RALF and asks before implementing |
-| **Team Lead Mode** | Multi-agent setup with 4 specialized teammates via tmux |
-| **MCP Servers** | Context7 (docs), Brave Search |
+| **GSD Principles** | 9 working principles: bias to action, ship over perfect, cut scope, etc. |
+| **Solo Dev Mode** | Single-agent Claude gated by native plan mode |
+| **Team Lead Mode** | Multi-agent mode using native agents spawned via the `Agent` tool |
+| **Project Lead Mode** | Decomposes GitHub PRDs into dependency-ordered issues |
+| **Hooks** | Branch protection (blocks commits to main), prettier-on-edit, push log, done notification |
+| **MCP Servers** | Context7 (docs), Shadcn, Iconify, 21st.dev, Brave Search |
 | **Security Defaults** | Hardened allow/deny lists blocking destructive commands |
-| **Warp Terminal** | Setup instructions for "Claude Team" launch config |
 
 ## Prerequisites
 
 - **macOS** (Apple Silicon or Intel)
 - **Node.js >= 18** ([download](https://nodejs.org))
 
-The setup script will install everything else automatically (Homebrew, Warp, tmux, Claude Code).
+The setup script will install everything else automatically (Homebrew, jq, Claude Code).
 
 ## Quick Start
 
@@ -35,19 +36,20 @@ chmod +x setup.sh
 The script will:
 
 1. Install [Homebrew](https://brew.sh) (if missing)
-2. Install [Warp](https://www.warp.dev) via Homebrew
-3. Install [tmux](https://github.com/tmux/tmux/wiki) via Homebrew
-4. Check for / install [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-5. Configure `~/.claude/settings.json` with secure defaults
-6. Add the [Context7 MCP](https://context7.com) server
-7. Install tmux config optimized for Claude Team mode
-8. Print Warp "Claude Team" launch config setup instructions
-9. Symlink `claude-solo`, `claude-team`, and `claude-lead` to `/usr/local/bin`
-10. Symlink `CLAUDE.md` orchestrator to `~/.claude/CLAUDE.md`
+2. Check for / install [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+3. Merge `~/.claude/settings.json` with secure defaults and hooks
+4. Install global npm tools (uipro-cli, Playwright)
+5. Configure MCP servers (Context7, Shadcn, Iconify, 21st.dev)
+6. Set up iTerm2 profiles for solo and team modes
+7. Symlink `claude-solo`, `claude-team`, and `claude-lead` to `/usr/local/bin`
+8. Symlink `CLAUDE.md` orchestrator to `~/.claude/CLAUDE.md`
+9. Install global commands to `~/.claude/commands/`
+10. Symlink native skills to `~/.claude/skills/`
+11. Symlink team agents to `~/.claude/agents/`
 
 ## How It Works
 
-After running `setup.sh`, the orchestrator `CLAUDE.md` is symlinked to `~/.claude/CLAUDE.md`. This means it auto-loads whenever you run Claude from **any** project.
+After running `setup.sh`, the orchestrator `CLAUDE.md` is symlinked to `~/.claude/CLAUDE.md`. This means it auto-loads whenever you run Claude from **any** project. Skills are installed natively, so Claude triggers them automatically from their descriptions — no manual loading.
 
 ### Day-to-Day Workflow
 
@@ -59,9 +61,9 @@ cd ~/Developer/my-project
 claude-solo
 
 # 3. Give it a task — Claude will automatically:
-#    - Load relevant shared skills on demand
-#    - Follow the RALF loop: read → plan → ask approval → implement → validate
-#    - Create a conventional commit when done
+#    - Trigger relevant skills (dev-workflow, per-stack conventions, design)
+#    - Follow the RALF loop: read → plan (plan mode approval) → implement → validate
+#    - Create a conventional commit on a branch and open a PR
 ```
 
 ### Solo vs Team Mode
@@ -69,16 +71,8 @@ claude-solo
 | | Solo (`claude-solo`) | Team (`claude-team`) |
 |---|---|---|
 | **Best for** | Small/medium tasks (< 10 files) | Large, cross-module tasks |
-| **How it works** | One Claude instance follows RALF | Team lead + 4 specialized agents in tmux |
+| **How it works** | One Claude instance follows RALF | Team lead orchestrates native agents via the `Agent` tool |
 | **You control** | Approve the plan, then Claude executes | Approve the plan, then agents coordinate |
-
-### What Gets Loaded Automatically
-
-1. `CLAUDE.md` orchestrator (via symlink) — RALF loop, GSD principles
-2. Shared skills — loaded on demand (commits, validation, debugging, etc.)
-3. Memory — `skills/memory/learnings.md` for past insights
-
-Skills are loaded **lazily** — Claude only reads what's relevant to the current task.
 
 ## Architecture
 
@@ -86,26 +80,30 @@ Skills are loaded **lazily** — Claude only reads what's relevant to the curren
 ~/Developer/
 └── claude-code-i14u/
     ├── CLAUDE.md                      ← source file (symlinked to ~/.claude/CLAUDE.md)
-    ├── skills/
-    │   ├── shared/                    ← cross-project methodology
-    │   │   ├── ralf-loop.md
-    │   │   ├── conventional-commits.md
-    │   │   ├── gsd-principles.md
-    │   │   ├── changes-validation.md
-    │   │   ├── pr-workflow.md
-    │   │   ├── debug-mode.md
-    │   │   ├── frontend-design.md
-    │   │   └── new-project-setup.md
+    ├── skills/                        ← native skills (symlinked into ~/.claude/skills/)
+    │   ├── dev-workflow/              ← RALF loop, validation, self-review, commits, PRs
+    │   ├── debug-mode/                ← systematic debugging methodology
+    │   ├── new-project-setup/         ← scaffold blueprint + checklist
+    │   ├── web-ui-design/             ← design philosophy, component patterns, brand templates
+    │   ├── app/                       ← app-dev: React Native / Expo conventions
+    │   ├── backend/                   ← backend-dev: NestJS conventions
+    │   ├── web/                       ← web-dev: Next.js conventions
     │   ├── ui-ux-pro-max/             ← design system database + search scripts
+    │   ├── shared/                    ← lead-workflow (Project Lead mode reference)
     │   └── memory/
     │       └── learnings.md           ← persistent learnings (Claude appends here)
+    ├── agents/                        ← team agents (symlinked into ~/.claude/agents/)
+    │   ├── pikachu.md                 ← implementer (opus)
+    │   ├── charmander.md              ← reviewer & security (sonnet, read-only)
+    │   ├── squirtle.md                ← test engineer (sonnet)
+    │   └── bulbasaur.md               ← QA & sign-off (sonnet, read-only)
+    ├── .claude/commands/              ← slash commands (installed to ~/.claude/commands/)
     ├── config/
-    │   ├── claude-settings.json
+    │   ├── claude-settings.json       ← settings + hooks (merged into ~/.claude/settings.json)
     │   ├── solo-system-prompt.md
     │   ├── team-system-prompt.md
-    │   └── tmux.conf
-    ├── plans/                         ← team mode orchestration plans (per project)
-    ├── commands/                      ← custom slash commands
+    │   └── lead-system-prompt.md
+    ├── plans/                         ← plan files (one per project/feature, checkbox steps)
     └── bin/
         ├── claude-solo
         ├── claude-team
@@ -119,11 +117,11 @@ Every task follows this methodology:
 | Phase | What happens |
 |-------|-------------|
 | **R**ead | Read the task, referenced files, relevant skills, and memory/learnings |
-| **A**nalyse + Plan | Assess scope and complexity, create an implementation plan, get user approval |
-| **L**int + Implement | Write code, run validation commands, fix in a loop until clean |
-| **F**eedback | Summarize what was done, note learnings, create conventional commit |
+| **A**nalyse + Plan | Assess scope, create a plan, get approval via plan mode; non-trivial plans are saved to `plans/` with checkboxes |
+| **L**int + Implement | Write code (test-first for bug fixes), run validation commands, fix in a loop until clean |
+| **F**eedback | Verify behavior, summarize, note learnings, push and open a PR |
 
-The full methodology is in `skills/shared/ralf-loop.md`.
+The full methodology is in `skills/dev-workflow/ralf-loop.md`.
 
 ## GSD Principles
 
@@ -135,6 +133,7 @@ The full methodology is in `skills/shared/ralf-loop.md`.
 6. **No gold-plating** — don't add features, refactor, or improve beyond what was asked
 7. **Ask when stuck** — if blocked for more than 5 minutes, ask the user
 8. **Leave it better** — fix small issues you encounter but don't refactor
+9. **Pause on complexity** — briefly ask "is there a simpler way?" before committing to a non-trivial approach
 
 ## Usage
 
@@ -144,12 +143,7 @@ The full methodology is in `skills/shared/ralf-loop.md`.
 claude-solo
 ```
 
-Opens Claude Code with a system prompt that enforces the RALF loop. Claude will:
-- Load relevant shared skills on demand
-- Read the task thoroughly
-- Create a plan and ask for approval
-- Only implement after you say go
-- Run validation commands and fix issues
+Opens Claude Code in plan mode with the RALF system prompt. Claude reads the task, presents a plan through native plan mode, implements after approval, and validates in a loop. Obvious ≤3-file bug fixes skip planning.
 
 ### Team Lead Mode
 
@@ -157,27 +151,41 @@ Opens Claude Code with a system prompt that enforces the RALF loop. Claude will:
 claude-team
 ```
 
-Opens Claude Code as a team lead with tmux split panes. After you approve the plan, it spawns 4 agent teammates:
+Opens Claude Code as a team lead. After you approve the plan, it spawns the native agents from `~/.claude/agents/` (parallel work runs in isolated git worktrees):
 
 | Agent | Model | Role |
 |-------|-------|------|
-| **Pikachu** | Opus | Implementer — writes production code |
-| **Charmander** | Sonnet | Reviewer & Security — code review, security audit |
-| **Squirtle** | Sonnet | Test Engineer or Security & Performance (varies by plan) |
-| **Bulbasaur** | Sonnet | QA & Compliance — final validation, compliance checks |
+| **pikachu** | Opus | Implementer — writes production code |
+| **charmander** | Sonnet | Reviewer & Security — read-only code review, security audit |
+| **squirtle** | Sonnet | Test Engineer — tests + performance notes |
+| **bulbasaur** | Sonnet | QA — runs full validation, final sign-off |
 
-### MCP Servers
+### Project Lead Mode
 
-| Server | Purpose | Setup |
-|--------|---------|-------|
-| **Context7** | Fetch up-to-date library documentation | Auto-configured by setup.sh |
-| **Brave Search** | Web search for research | `claude mcp add-json brave-search '{"command":"npx","args":["-y","@anthropic-ai/brave-search-mcp@latest"],"env":{"BRAVE_API_KEY":"your-key"}}'` |
+```bash
+claude-lead
+```
+
+Reads a GitHub PRD issue, explores the codebase, and decomposes the project into dependency-ordered GitHub issues (3-8 files each, with acceptance criteria) after your approval.
+
+## Hooks
+
+Configured in `config/claude-settings.json` and merged into `~/.claude/settings.json`:
+
+| Hook | Event | What it does |
+|------|-------|--------------|
+| Branch protection | PreToolUse (Bash) | Blocks `git commit` on `main`/`master` (exit 2) |
+| Auto-format | PostToolUse (Edit/Write) | Runs the project's local prettier on edited files, if installed |
+| Push log | PostToolUse (Bash) | Appends remote + branch to `~/.claude/push.log` on every push |
+| Done notification | Stop | macOS notification when Claude finishes |
+
+Per-project validation hooks (typecheck on Stop) are documented in `skills/dev-workflow/changes-validation.md`.
 
 ## Security Settings
 
 ### Auto-Approved (Allow List)
 
-Safe, everyday operations: file reading (Read, Glob, Grep), safe git (status, diff, log, branch, checkout, add, commit), dev tools (npm, npx, node, tsc, eslint, prettier), non-destructive filesystem (ls, cat, head, tail, find, mkdir, cp, mv), Context7 MCP.
+Safe, everyday operations: file reading (Read, Glob, Grep), safe git (status, diff, log, branch, checkout, add, commit), dev tools (npm, npx, node, tsc, eslint, prettier), non-destructive filesystem (ls, cat, head, tail, find, mkdir, cp, mv), configured MCP servers.
 
 ### Hard-Blocked (Deny List)
 
@@ -197,9 +205,9 @@ Safe, everyday operations: file reading (Read, Glob, Grep), safe git (status, di
 
 **"claude: command not found"** — Install Claude Code: `npm install -g @anthropic-ai/claude-code`
 
-**"tmux: command not found"** — Install tmux: `brew install tmux`
-
 **CLAUDE.md not loading** — Verify the symlink: `ls -la ~/.claude/CLAUDE.md` should point to `claude-code-i14u/CLAUDE.md`.
+
+**Skills not triggering** — Verify symlinks: `ls -la ~/.claude/skills/` should point into `claude-code-i14u/skills/`. Re-run `setup.sh` if missing.
 
 ## License
 
