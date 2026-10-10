@@ -305,7 +305,7 @@ for agent in "$SCRIPT_DIR"/agents/*.md; do
   success "Agent installed: $(basename "$agent" .md)"
 done
 
-# ─── Step 15: Hook scripts ───────────────────────────────────────────────────
+# ─── Step 15: Hook scripts ───
 
 chmod +x "$SCRIPT_DIR"/bin/*.sh "$SCRIPT_DIR"/bin/*.py
 success "Hook scripts executable (branch-guard, rm-guard, pr-check)."
