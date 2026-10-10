@@ -6,7 +6,7 @@
 #   2.  Checks for Claude Code (prompts to install if missing)
 #   3.  Merges Claude Code settings into ~/.claude/settings.json
 #   4.  Installs global npm tools: uipro-cli, playwright
-#   5.  Configures Context7 MCP server
+#   5.  Configures Linear (user scope) and Context7 MCP servers
 #   6.  Configures Shadcn MCP server
 #   7.  Configures Iconify MCP server
 #   8.  Configures 21st.dev MCP server (prompts for API key)
@@ -143,6 +143,16 @@ if command -v npm &>/dev/null; then
   fi
 else
   warn "npm not found — skipping global tool installs. Install Node.js >= 18 first."
+fi
+
+# ─── Step 5a: Linear MCP ───
+
+info "Configuring Linear MCP server..."
+if command -v claude &>/dev/null; then
+  claude mcp add --scope user --transport http linear https://mcp.linear.app/mcp 2>/dev/null || true
+  success "Linear MCP configured (user scope). Run /mcp once inside Claude to authenticate."
+else
+  warn "Claude Code not installed — skipping Linear MCP setup."
 fi
 
 # ─── Step 5: Context7 MCP server ─────────────────────────────────────────────

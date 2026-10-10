@@ -14,7 +14,7 @@ One-command setup for Claude Code on this laptop: a global CLAUDE.md orchestrato
 | **Review** | `charmander` on Opus, four axes + security, debate protocol (`/code:review`, `/code:review-fix`) |
 | **Hooks** | branch-guard (no commits on main), rm-guard (`rm -rf` only in worktrees), pr-check (short comments and PR bodies), prettier-on-edit, push log, done notification |
 | **Modes** | Solo (default), Team (pikachu/charmander/squirtle/bulbasaur), Project Lead (PRD → issues) |
-| **MCP Servers** | Context7, Shadcn, Iconify, 21st.dev |
+| **MCP Servers** | Linear (authenticate once with `/mcp`), Context7, Shadcn, Iconify, 21st.dev |
 
 Built for the **agents view**: sessions run as background jobs in their own worktree, so every rule lives in CLAUDE.md and the skills rather than a launcher prompt.
 

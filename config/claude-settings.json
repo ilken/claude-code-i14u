@@ -51,7 +51,15 @@
       "Bash(gh issue view *)",
       "Bash(gh run list *)",
       "Bash(gh run view *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "mcp__linear__get_issue",
+      "mcp__linear__list_issues",
+      "mcp__linear__list_comments",
+      "mcp__linear__get_project",
+      "mcp__linear__list_projects",
+      "mcp__linear__list_teams",
+      "mcp__linear__list_issue_statuses",
+      "mcp__linear__list_issue_labels"
     ],
     "deny": [
       "Bash(rm -rf *)",
