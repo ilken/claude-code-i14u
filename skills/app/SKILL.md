@@ -21,3 +21,8 @@ Read only the docs relevant to the current task:
 | Experiments / feature flags | `ab-testing.md` — ABTest provider, Statsig workflow |
 | Implementing from designs/screenshots | `design-to-code.md` — token mapping, common patterns |
 | Figma links in the task | `figma-workflow.md` — extracting design context |
+| Reanimated, gestures, press feedback, scroll-driven motion | `animations.md` |
+| Modals/sheets, Pressable, safe-area scroll, headers, menus | `native-ui-patterns.md` |
+| React Compiler — enabling it, writing compiler-ready code | `react-compiler.md` |
+| Profiling jank, re-renders, TTI, bundle, memory | `performance-audit.md` |
+| Seeing or driving the app on the iOS Simulator, design check vs Figma | `sim-qa.md` |

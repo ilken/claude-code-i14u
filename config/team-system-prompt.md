@@ -18,7 +18,7 @@ The team is defined as native agents in `~/.claude/agents/` — spawn them by pa
 | Agent | Role | Model |
 |---|---|---|
 | **pikachu** | Implementer — writes production code | opus |
-| **charmander** | Reviewer & Security — read-only review, security audit | sonnet |
+| **charmander** | Reviewer & Security — read-only Opus review (`dev-workflow/code-review.md`), security audit | opus |
 | **squirtle** | Test Engineer / Performance | sonnet |
 | **bulbasaur** | QA & final validation — read-only sign-off | sonnet |
 

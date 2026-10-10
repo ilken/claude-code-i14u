@@ -1,105 +1,73 @@
 # RALF Loop
 
-A structured methodology for completing tasks with consistency and quality.
-Every task follows this cycle: **Read -> Analyse -> Lint -> Feedback**.
+Every task follows: **Read → Analyse + Plan → Implement + Lint → Feedback**.
+
+This file holds only the deltas on top of Claude Code's native behaviour (plan mode, validation loops, verification). Don't restate the basics — follow them; add these on top.
 
 ---
 
 ## R -- Read
 
-Before writing any code, gather full context:
+**Never optional — even with a pre-approved plan.** Skipping Read leads to wrong validation commands and missed workflow steps (commit, PR). Minimum load-out:
 
-1. Read the task description and acceptance criteria
-2. Read all referenced files and modules
-3. Read relevant skills for the project (conventions, patterns, validation commands)
-4. Read memory/learnings for prior context on similar work
+1. `changes-validation.md` — the project's validation commands
+2. The project's own CLAUDE.md and the matching stack skill (`app-dev`, `backend-dev`, `web-dev`), lazily — only the docs the task touches
+3. `~/Developer/claude-code-i14u/skills/memory/learnings.md` — grep for the project name and the area
+4. The GitHub issue if there is one: `gh issue view <n> --comments`
 
-Do not start coding until you understand what is being asked and where it fits.
-
-**This phase is never optional.** Even when a pre-approved plan is provided (e.g. from plan mode), always run the Read phase. At minimum, load `changes-validation.md` to get the correct validation commands for the project. Skipping Read leads to wrong commands and missed workflow steps (commit, PR).
+**Batch only independent reads.** Locate first (grep/glob), then open only what the hits point to; never pre-load a file on a guess. Writes, edits and git stay one at a time.
 
 ---
 
 ## A -- Analyse + Plan
 
-Assess the scope and form a plan before implementation:
+Get user approval before implementing non-trivial changes (the autonomous bug-fix criteria in CLAUDE.md are the exception). Keep plans minimal for simple tasks. Run `plan-grilling.md` on plans touching 3+ files, several modules or the data model.
 
-1. **Assess complexity** -- is this a one-file change or a multi-module feature?
-2. **Identify affected areas** -- which files, modules, and tests are involved?
-3. **Create an implementation plan** with ordered steps:
-   - What to change and where
-   - What new files (if any) to create
-   - What tests to write or update
-   - What validation to run
-4. **Get user approval** before proceeding (for non-trivial changes)
-5. **Write the approved plan to a file** -- for non-trivial tasks (multi-step,
-   multi-module, or anything likely to span a long session), save the plan to
-   `~/Developer/claude-code-i14u/plans/<project>-<slug>.md` with checkbox steps.
-   Tick items off as you implement. The plan file survives compaction and
-   crashes; the chat message does not.
+### Plan output standard
 
-Keep the plan minimal. If the task is simple, a mental checklist is enough -- do not over-plan.
+The *depth* of the plan depends on **who implements it**:
+
+- **You, same session** → a light checklist is fine; you carry the context.
+- **A context-free executor** — Sonnet (`model-selection.md`), a subagent, a fresh session, Cursor → the plan must be a **complete spec**. Anything left to "figure out later" will be figured out wrong.
+
+A Sonnet-proof plan leaves **zero decisions** to the implementer:
+
+1. **Exact file paths** for every edit/create/delete — never "the relevant service"
+2. **An existing pattern to mirror** for each change — a concrete file/function to copy the shape from. The single biggest error-preventer.
+3. **Explicit out-of-scope list**
+4. **Exact validation commands** and what green looks like
+5. **Decisions already made**, with rationale, so the executor doesn't re-litigate
+6. **Named edge cases / error states**
+7. **Existing code reused** for every new helper, column or dependency: say what you searched for and why it does not fit. A bug fix greps every caller and fixes the shared function, not only the path the issue names.
+
+A plan handed off rather than implemented in-session goes into the `handoff.md` template.
 
 ---
 
-## L -- Lint + Implement
+## L -- Implement + Lint
 
-Write the code, then validate in a loop until clean:
+1. **Test first for bug fixes** — a failing test that reproduces it; done when it passes.
+2. Validate with the **project's** commands and loop until green (`changes-validation.md` is the only copy; don't restate them).
+3. **Self-review** via `self-review-checklist.md`.
+4. **Read every comment in the diff** and delete the ones that narrate (`code-comments.md`). Run `bin/pr-check.sh` here, not at `gh pr create` where the hook blocks the PR.
+5. **Commit after each logical unit of work** — never one big commit at the end.
 
-1. **Test first for bug fixes** -- before fixing a bug, write a failing test that
-   reproduces it. The fix is done when the test passes. For new features, write
-   tests alongside the implementation, not as an afterthought.
-2. **Implement** the changes following the plan
-3. **Run validation commands** for the project -- see `changes-validation.md`
-   for the per-project commands and the generic fallback
-4. **Fix any errors** -- lint, type, test failures
-5. **Repeat** steps 3-4 until all checks pass
-6. **Self-review** -- run through `self-review-checklist.md` to catch issues that linting misses but reviewers flag (inline types, missing try-catch, redundant queries, etc.)
-7. **Commit** after each logical unit of work -- don't batch everything into one big commit at the end. Each step of the plan or cohesive file group should be its own commit.
+### Mid-implementation re-plan triggers
 
-Do not move on with known failures. The loop ends when validation is green.
+Stop coding and re-plan (summarize what you learned, present a revised plan, wait for approval) on any of:
 
-### Mid-Implementation Re-Plan
-
-If any of these triggers occur during implementation, **stop coding and re-plan**:
-
-- **Wrong assumptions** — the code does not work as expected based on the original analysis
-- **Scope explosion** — the change requires significantly more files or modules than planned
-- **2 failed attempts** — two different approaches to the same sub-problem have failed
-
-When triggered:
-1. Stop implementation
-2. Summarize what you learned and what went wrong
-3. Present a revised plan to the user
-4. Wait for approval before resuming
-
-This is not a failure — it is the plan adapting to reality.
+- **Wrong assumptions** — the code doesn't behave as the analysis predicted
+- **Scope explosion** — significantly more files/modules than planned
+- **2 failed attempts** on the same sub-problem (also a model-escalation trigger)
 
 ---
 
 ## F -- Feedback
 
-Wrap up the task cleanly:
+Everything written here follows `writing-rules.md`.
 
-1. **Verify behavior, not just checks** -- for user-facing changes (UI, CLI,
-   API behavior), run the app and observe the change working (the `/verify`
-   skill automates this). Lint-clean does not mean it works.
-2. **Summarize** what was done -- files changed, decisions made, anything noteworthy
-3. **Note learnings** -- if you discovered something useful, append it to memory
-4. **Push and create a PR** -- push the branch and open a PR (see `pr-workflow.md` for format). Commits should already exist from the Implement phase.
-5. **Flag open questions** -- anything that needs follow-up or user decision
-
-### Immediate Learning Capture
-
-Do not wait for Feedback to capture learnings. If the user corrects you mid-task or you discover something important during implementation, update `learnings.md` immediately. The Feedback phase captures final learnings; corrections and surprises should be recorded as they happen.
-
----
-
-## Quick Reference
-
-| Phase   | Action                          | Output                    |
-| ------- | ------------------------------- | ------------------------- |
-| Read    | Gather context                  | Understanding             |
-| Analyse | Plan the approach               | Ordered steps + approval  |
-| Lint    | Code + validate + commit in a loop | Green checks           |
-| Feedback| Summarize + push + PR + learnings   | Clean deliverable     |
+1. **Verify behaviour, not just checks** — for user-facing changes run it and look (`browser-qa` for web, `app-dev/sim-qa.md` for the app).
+2. **Summarize** — files changed, decisions made, anything noteworthy.
+3. **Capture learnings** — `learnings.md`, ≤10-line entries, merged to `main` the same turn (CLAUDE.md auto-merge rule). Capture corrections the moment they happen.
+4. **Push and create a PR** — `pr-workflow.md`.
+5. **Flag open questions** — anything needing follow-up or a user decision.

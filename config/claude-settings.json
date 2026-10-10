@@ -2,7 +2,10 @@
   "verbose": true,
   "alwaysThinkingEnabled": true,
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/Developer/claude-code-i14u/mods/ship-cockpit"
   },
   "permissions": {
     "allow": [
@@ -40,7 +43,15 @@
       "mcp__shadcn",
       "mcp__iconify",
       "mcp__21st-dev",
-      "mcp__brave-search"
+      "mcp__brave-search",
+      "Bash(yarn *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh issue view *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(python3 *)"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -83,9 +94,14 @@
       "Read(.env)",
       "Read(.env.*)",
       "Read(**/credentials*)",
-      "Read(**/*secret*)",
       "Read(**/*.pem)",
-      "Read(**/*.key)"
+      "Read(**/*.key)",
+      "Read(**/*secret*.json)",
+      "Read(**/*secret*.yaml)",
+      "Read(**/*secret*.yml)",
+      "Read(**/*secret*.env)",
+      "Read(**/*secret*.toml)",
+      "Read(**/.secret*)"
     ]
   },
   "hooks": {
@@ -95,7 +111,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -q 'git commit'; then BRANCH=$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" branch --show-current 2>/dev/null); if [ \"$BRANCH\" = 'main' ] || [ \"$BRANCH\" = 'master' ]; then echo \"Blocked: cannot commit directly to $BRANCH — create a branch first\" >&2; exit 2; fi; fi"
+            "command": "\"$HOME/Developer/claude-code-i14u/bin/branch-guard.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking branch protection..."
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/Developer/claude-code-i14u/bin/rm-guard.py\"",
+            "timeout": 10,
+            "statusMessage": "Checking rm targets..."
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/Developer/claude-code-i14u/bin/pr-check.sh\" --hook",
+            "timeout": 20,
+            "statusMessage": "Checking comment and PR body length..."
           }
         ]
       }
@@ -130,5 +160,10 @@
         ]
       }
     ]
+  },
+  "tui": "fullscreen",
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest"
   }
 }

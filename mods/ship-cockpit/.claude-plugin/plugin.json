@@ -1,0 +1,7 @@
+{
+  "name": "ship-cockpit",
+  "version": "0.5.0",
+  "description": "Cockpit for /mod:ship: polls GitHub checks, wakes the session on a CI verdict, enforces the push caps and hard rules, and draws the run in a pane.",
+  "author": { "name": "ilken" },
+  "types": "./types/index.d.ts"
+}

@@ -4,6 +4,15 @@ Append new learnings at the top. Format:
 
 ## [DATE] [PROJECT] - [Topic]
 
+## 2026-10-10 claude-code-i14u - Porting the work setup and working inside an isolated worktree
+
+- **The worktree-isolation guard rejects shell it can't prove stays in the worktree**: `cd … && python3 - <<EOF` that mentions git, `sed` on a `$VAR` path, a grep pattern containing "GitHub", piping JSON that names `git commit` into a hook script. Write the edit script to `$CLAUDE_JOB_DIR/tmp`, run it with absolute paths, feed hook payloads from files.
+- **Don't symlink `~/.claude/commands` to a repo's `.claude/commands`** — inside that repo every command loads twice (user + project). Keep commands in a top-level `commands/`.
+- **`py_compile` writes `__pycache__` next to the script**; it got committed once. `__pycache__/` is now in `.gitignore`.
+- **Mods port cleanly when the tests come along**: `claude plugin test` + `validate` on the untouched copy first gives a baseline, then the same suite proves the port.
+
+---
+
 ## 2026-07-23 boulevard-dex - Chrome-extension viewport checks: resize_window can silently no-op
 
 - `mcp__claude-in-chrome__resize_window` reported success but `window.innerWidth` stayed at desktop size (macOS Chrome min-width / window manager). Always verify with `window.innerWidth` via `javascript_tool` after resizing.
