@@ -13,9 +13,10 @@
 #   9.  Sets up iTerm2 profiles for claude-solo and claude-team
 #  10.  Symlinks claude-solo, claude-team, and claude-lead to /usr/local/bin
 #  11.  Symlinks CLAUDE.md orchestrator to ~/.claude/CLAUDE.md
-#  12.  Installs global commands (startup:, project:) to ~/.claude/commands/
+#  12.  Symlinks the commands directory to ~/.claude/commands/
 #  13.  Symlinks native skills to ~/.claude/skills/
 #  14.  Symlinks team agents to ~/.claude/agents/
+#  15.  Makes the hook scripts in bin/ executable (the ship-cockpit mod loads via settings env)
 #
 # Usage:
 #   chmod +x setup.sh && ./setup.sh
@@ -248,27 +249,24 @@ fi
 
 # ─── Step 12: Install global commands ───────────────────────────────────────
 
-info "Installing global Claude commands (~/.claude/commands/)..."
+info "Installing slash commands (~/.claude/commands/)..."
 
+# Symlink the whole directory so the repo stays the single source of truth —
+# a `git pull` is a deploy. Copying caused stale and missing commands.
 GLOBAL_COMMANDS_DIR="$HOME/.claude/commands"
-LOCAL_COMMANDS_DIR="$SCRIPT_DIR/.claude/commands"
 
-mkdir -p "$GLOBAL_COMMANDS_DIR"
-
-# Copy each subdirectory (namespaced commands like startup:, project:)
-for dir in "$LOCAL_COMMANDS_DIR"/*/; do
-  namespace=$(basename "$dir")
-  mkdir -p "$GLOBAL_COMMANDS_DIR/$namespace"
-  cp "$dir"*.md "$GLOBAL_COMMANDS_DIR/$namespace/" 2>/dev/null || true
-  success "Commands installed: $namespace:"
-done
-
-# Copy any top-level .md command files
-for file in "$LOCAL_COMMANDS_DIR"/*.md; do
-  [[ -f "$file" ]] || continue
-  cp "$file" "$GLOBAL_COMMANDS_DIR/"
-  success "Command installed: $(basename "$file")"
-done
+if [[ -L "$GLOBAL_COMMANDS_DIR" ]]; then
+  ln -sfn "$SCRIPT_DIR/commands" "$GLOBAL_COMMANDS_DIR"
+  success "Commands directory already symlinked."
+else
+  if [[ -d "$GLOBAL_COMMANDS_DIR" ]]; then
+    COMMANDS_BACKUP="$GLOBAL_COMMANDS_DIR.bak.$(date +%Y%m%d%H%M%S)"
+    warn "Existing commands directory found — backing up to $COMMANDS_BACKUP"
+    mv "$GLOBAL_COMMANDS_DIR" "$COMMANDS_BACKUP"
+  fi
+  ln -s "$SCRIPT_DIR/commands" "$GLOBAL_COMMANDS_DIR"
+  success "Commands symlinked: $GLOBAL_COMMANDS_DIR → $SCRIPT_DIR/commands"
+fi
 
 # ─── Step 13: Install native skills ──────────────────────────────────────────
 
@@ -281,6 +279,7 @@ mkdir -p "$SKILLS_TARGET"
 for pair in \
   "dev-workflow:dev-workflow" \
   "debug-mode:debug-mode" \
+  "browser-qa:browser-qa" \
   "new-project-setup:new-project-setup" \
   "web-ui-design:web-ui-design" \
   "app-dev:app" \
@@ -305,6 +304,12 @@ for agent in "$SCRIPT_DIR"/agents/*.md; do
   ln -sf "$agent" "$AGENTS_TARGET/$(basename "$agent")"
   success "Agent installed: $(basename "$agent" .md)"
 done
+
+# ─── Step 15: Hook scripts ───────────────────────────────────────────────────
+
+chmod +x "$SCRIPT_DIR"/bin/*.sh "$SCRIPT_DIR"/bin/*.py
+success "Hook scripts executable (branch-guard, rm-guard, pr-check)."
+info "ship-cockpit mod loads from CLAUDE_CODE_PLUGIN_DIRS; check it with: claude plugin test $SCRIPT_DIR/mods/ship-cockpit"
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
 

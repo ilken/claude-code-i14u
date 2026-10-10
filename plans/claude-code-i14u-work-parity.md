@@ -14,12 +14,12 @@ Bring the solo setup in line with the work repo, minus CircleCI, CodeRabbit and 
 ## Steps
 
 - [x] Read both repos
-- [ ] CLAUDE.md: core principles, model selection, quick-start map, auto-merge rule for this repo
-- [ ] dev-workflow skill: ralf-loop, self-review, pr-workflow, validation + new code-comments, writing-rules, model-selection, plan-grilling, code-review, worktree-workflow, handoff, visual-outputs, before-patching-dependencies; drop gsd-principles
-- [ ] debug-mode update; new browser-qa skill; app skills (animations, native-ui-patterns, react-compiler, performance-audit, sim-qa)
-- [ ] Commands: ship, mod:ship, ship-milestone, git:pr, code:*, handoff, handoff:list, web:qa, project:qa-checklist
-- [ ] bin: branch-guard, rm-guard, pr-check, cleanup-worktrees, session-digest
-- [ ] mods/ship-cockpit ported to GitHub Actions, no CodeRabbit/CircleCI/graph
-- [ ] Agents: charmander on opus with the review method
-- [ ] config/claude-settings.json + setup.sh + README
-- [ ] Validate (bash -n, py_compile, jq, plugin validate/test), learnings, commit, PR
+- [x] CLAUDE.md: core principles, model selection, quick-start map, auto-merge rule for this repo
+- [x] dev-workflow skill: ralf-loop, self-review, pr-workflow, validation + new code-comments, writing-rules, model-selection, plan-grilling, code-review, worktree-workflow, handoff, visual-outputs, before-patching-dependencies; drop gsd-principles
+- [x] debug-mode update; new browser-qa skill; app skills (animations, native-ui-patterns, react-compiler, performance-audit, sim-qa)
+- [x] Commands: ship, mod:ship, ship-milestone, git:pr, code:*, handoff, handoff:list, web:qa, project:qa-checklist
+- [x] bin: branch-guard, rm-guard, pr-check, cleanup-worktrees, session-digest
+- [x] mods/ship-cockpit ported to GitHub Actions, no CodeRabbit/CircleCI/graph
+- [x] Agents: charmander on opus with the review method
+- [x] config/claude-settings.json + setup.sh + README
+- [x] Validate (bash -n, py_compile, jq, plugin validate/test), learnings, commit, PR

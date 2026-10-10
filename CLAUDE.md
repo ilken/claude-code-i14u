@@ -58,7 +58,7 @@ Detect the project from the cwd and its `package.json` / project CLAUDE.md: Nest
 
 ## Skills
 
-Skills live in `{i14u}/skills/` and are symlinked into `~/.claude/skills/` by `setup.sh`. They auto-trigger from their descriptions; if one should have and didn't, read its `SKILL.md` directly. A project's own CLAUDE.md overrides them.
+Skills live in `{i14u}/skills/` and are symlinked into `~/.claude/skills/` by `setup.sh`. They auto-trigger from their descriptions; if one should have and didn't, read its `SKILL.md` directly. A path like `dev-workflow/code-review.md` means `~/.claude/skills/dev-workflow/code-review.md`. A project's own CLAUDE.md overrides them.
 
 - **dev-workflow** — RALF, validation, self-review, comments, writing rules, model selection, plan grilling, review method, worktrees, handoffs, commits, PRs
 - **debug-mode** — evidence-first debugging
