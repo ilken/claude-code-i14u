@@ -21,10 +21,12 @@ Reflect on 5-7 different possible sources of the problem. Consider:
 
 ## Step 2: Narrow Down
 
-Distill the hypotheses to the 1-2 most likely sources based on:
+The failure mode this skill prevents is picking a favourite hypothesis early, then reading the evidence to fit it. **Rank only on evidence you can point at** — a stack trace, a log line, a diff, a query plan — and cite it. A hypothesis with nothing behind it is labelled `not verified`, not promoted to most likely.
+
+Distill to the 1-2 most likely sources based on:
 - Error messages and stack traces
 - Which code paths are actually exercised
-- What changed recently
+- What changed recently (`git log -p` on the area, the last deploy)
 
 ## Step 3: Add Diagnostic Logs
 

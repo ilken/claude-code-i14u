@@ -1,10 +1,10 @@
 # Changes Validation
 
-Validation commands to run before committing changes. Run in a loop, fixing issues until all checks pass.
+The only copy of the validation commands — never restate them in a skill or command file. Run in a loop until clean. A project's own CLAUDE.md overrides this file.
 
 ---
 
-## Backend (equals-client-be)
+## Backend (NestJS)
 
 ### Code Quality
 ```bash
@@ -25,7 +25,7 @@ yarn test:local -- src/profile-notification/notification-builder/__test__/my-not
 
 ---
 
-## App (equals-client-app)
+## App (Expo / React Native)
 
 ### Code Quality
 ```bash
@@ -65,6 +65,16 @@ yarn test {TEST_FILE_PATH}
 Check `package.json` scripts (or the project's CLAUDE.md) and run, in order of
 availability: lint, typecheck/tsc, tests touching the changed files, build.
 Use the project's own package manager — default to yarn when ambiguous.
+
+---
+
+## Real-page verification
+
+Lint, types and unit tests cannot see layout, hydration, runtime console errors or a logged-in view. For any **user-visible** web change, validate first, then open the page (`browser-qa` skill, or `/web:qa <route>`). For app screens, `app-dev/sim-qa.md`. Skip for pure logic, backend-only work and refactors with no visual surface.
+
+## Sandbox binary fallback
+
+`yarn lint` / `yarn tsc` can fail with `command not found: eslint` even with `node_modules/.bin` populated. Invoke through node: `node node_modules/eslint/bin/eslint.js …`, `node node_modules/typescript/bin/tsc --noEmit`, `node node_modules/jest/bin/jest.js --runInBand <path>`. In Yarn 4 repos, Homebrew's yarn 1 can shadow corepack: call yarn by the nvm absolute path.
 
 ---
 
