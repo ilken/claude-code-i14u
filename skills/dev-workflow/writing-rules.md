@@ -26,7 +26,7 @@ If not, delete it.
 
 | Artifact | Cap |
 |---|---|
-| Command file | 40 lines |
+| Command file | 40 lines (orchestrators `/ship`, `/ship-milestone`: 80) |
 | Skill reference file | 120 lines |
 | Learnings entry | 10 lines |
 | CLAUDE.md table cell | 1 line |
